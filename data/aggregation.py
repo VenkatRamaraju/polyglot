@@ -7,11 +7,13 @@ Pull data from various HuggingFace Datasets
 """
 
 # Imports
-from datasets import load_dataset
-import boto3
 import os
 import json
 import time
+from datasets import load_dataset
+from math import ceil
+from typing import List, Dict
+import boto3
 
 # Global variables
 datasets_info = {
@@ -38,23 +40,26 @@ language_code_map = {
     "Chinese": "zh",
     "Japanese": "ja"
 }
-MAX_EXAMPLES = 50
+MAX_EXAMPLES = 1000000
+BATCH_SIZE = 10000
 
-
-def upload_to_s3(language_to_sentences: dict):
+def upload_to_s3(language_to_sentences: List):
     """
     Upload to S3
 
     Args:
         language_to_sentences: Dictionary of language to sentence set mapping
     """
-
-    # Upload
-    s3 = boto3.client('s3', aws_access_key_id=os.environ["AWS_ACCESS_KEY_ID"],
-                    aws_secret_access_key=os.environ["AWS_SECRET_ACCESS_KEY"])
-    json_data = json.dumps(language_to_sentences)
-    s3.put_object(Bucket="tknzr", Key="raw.json", Body=json_data)
-    print("Upload complete...")
+    i = 0
+    for batch in language_to_sentences:
+        # Upload
+        s3 = boto3.client('s3', aws_access_key_id=os.environ["AWS_ACCESS_KEY_ID"],
+                        aws_secret_access_key=os.environ["AWS_SECRET_ACCESS_KEY"])
+        json_data = json.dumps(batch)
+        s3.put_object(Bucket="tknzr", Key="raw_" + str(i) + ".json", Body=json_data)
+        i += 1
+        
+    print("Upload complete.")
 
 
 
@@ -90,6 +95,30 @@ def get_data() -> dict:
     return language_to_sentence
 
 
+def batch_up(data: Dict[str, List[str]]) -> List[Dict[str, List[str]]]:
+    max_len = max((len(v) for v in data.values()), default=0)
+    if max_len == 0:
+        return []
+
+    num_batches = ceil(max_len / BATCH_SIZE)
+    batched = []
+
+    for i in range(num_batches):
+        batch = {}
+        any_data = False
+        for key, values in data.items():
+            start = i * BATCH_SIZE
+            end = start + BATCH_SIZE
+            sliced = values[start:end]
+            batch[key] = sliced
+            if sliced:
+                any_data = True
+        if any_data:
+            batched.append(batch)
+
+    return batched
+
+
 def main():
     """
     Orchestrate the data collection flow
@@ -99,8 +128,11 @@ def main():
     sentences = get_data()
     print(time.time() - start)
 
+    # batch up the JSONs
+    json_batches = batch_up(sentences)
+
     # Upload to S3
-    upload_to_s3(sentences)
+    upload_to_s3(json_batches)
 
 
 

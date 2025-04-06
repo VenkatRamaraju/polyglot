@@ -1,14 +1,8 @@
 package main
 
-import (
-	"bpe"
-	"normalize"
-)
+import "bpe"
 
 func main() {
-	// normalize the training text
-	normalizedText := normalize.Normalize("నేను ఒక టోకనైజర్ రాయబోతున్నాను. నేను ఒక టోకనైజర్ రాయబోతున్నాను. నేను ఒక టోకనైజర్ రాయబోతున్నాను. నేను ఒక టోకనైజర్ రాయబోతున్నాను.")
-
-	// encode the normalized text
-	bpe.Encode(normalizedText)
+	// kick off the training process
+	bpe.Train()
 }
