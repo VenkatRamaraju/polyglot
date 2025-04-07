@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"time"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/config"
@@ -15,20 +16,80 @@ import (
 	"github.com/aws/aws-sdk-go-v2/service/s3"
 )
 
-type pair struct {
-	iFirst  int
-	iSecond int
+// creates config object
+func CreateAWSConfigFromEnv(region string) (aws.Config, error) {
+	// get environment variables
+	accessKey := os.Getenv("AWS_ACCESS_KEY_ID")
+	secretKey := os.Getenv("AWS_SECRET_ACCESS_KEY")
+
+	// validations
+	if accessKey == "" || secretKey == "" {
+		return aws.Config{}, fmt.Errorf("missing AWS credentials in environment")
+	}
+
+	// establish configuration
+	creds := aws.NewCredentialsCache(credentials.NewStaticCredentialsProvider(accessKey, secretKey, ""))
+	cfg, err := config.LoadDefaultConfig(context.TODO(),
+		config.WithRegion(region),
+		config.WithCredentialsProvider(creds),
+	)
+	if err != nil {
+		return aws.Config{}, fmt.Errorf("failed to load AWS config: %w", err)
+	}
+
+	// return configuration
+	return cfg, nil
 }
 
-// fetchJSONFromS3 pulls a JSON file from S3 and unmarshals it into a map.
-func fetchJSONFromS3(bucket, key string) (map[string]interface{}, error) {
-	// grab background context
+// get all keys in an s3 bucket
+func listS3Keys(bucket, region string) ([]string, error) {
+	// get configuration
+	cfg, err := CreateAWSConfigFromEnv(region)
+	if err != nil {
+		return nil, err
+	}
+
+	// get client
+	client := s3.NewFromConfig(cfg)
+
+	// track variables
+	var keys []string
+	var continuationToken *string = nil
+	for {
+		// service call
+		resp, err := client.ListObjectsV2(context.TODO(), &s3.ListObjectsV2Input{
+			Bucket:            aws.String(bucket),
+			ContinuationToken: continuationToken,
+		})
+		if err != nil {
+			return nil, fmt.Errorf("failed to list objects: %w", err)
+		}
+		for _, obj := range resp.Contents {
+			keys = append(keys, aws.ToString(obj.Key))
+		}
+
+		// end
+		if !*resp.IsTruncated {
+			break
+		}
+		continuationToken = resp.NextContinuationToken
+	}
+
+	// return keys
+	return keys, nil
+}
+
+// converts s3 files to map
+func fetchJSONFromS3(bucket string, key string) (map[string]interface{}, error) {
+	// context
 	ctx := context.Background()
+
+	// state
+	region := "us-east-1"
 
 	// Read credentials from environment variables
 	accessKey := os.Getenv("AWS_ACCESS_KEY_ID")
 	secretKey := os.Getenv("AWS_SECRET_ACCESS_KEY")
-	region := "us-east-1"
 
 	// validation
 	if accessKey == "" || secretKey == "" || region == "" {
@@ -73,44 +134,47 @@ func fetchJSONFromS3(bucket, key string) (map[string]interface{}, error) {
 	return result, nil
 }
 
-func merge(sentences []string, merges *map[pair]int) error {
-	for _, sentence := range sentences {
-		fmt.Println(sentence)
-		os.Exit(1)
-	}
-
-	return nil
-}
-
 // Orchestrate the trianing process
 func Train() error {
-	// get training dataset
-	languageToSentence, err := fetchJSONFromS3("tknzr", "raw.json")
+	// get files
+	jsonFiles, err := listS3Keys("tknzr", "us-east-1")
 	if err != nil {
-		return fmt.Errorf("failed fetching JSON from S3: %w", err)
+		return fmt.Errorf("unable to pull s3 files: %w", err)
 	}
 
 	// Initialize the map to store training merges
-	merges := make(map[pair]int)
+	merges := make(map[[2]int]int)
 
-	// iterate over all languages
-	for language := range languageToSentence {
-		if language != "English" {
-			continue
-		}
-
-		// grab sentence list
-		sentences, valid := languageToSentence[language].([]string)
-		if !valid {
-			return errors.New("Unable to parse JSON for " + language + " into a string array")
-		}
-
-		// create merges
-		err = merge(sentences, &merges)
+	// get training dataset
+	start := time.Now()
+	for _, jsonFile := range jsonFiles {
+		// get the file contents
+		languageToSentence, err := fetchJSONFromS3("tknzr", jsonFile)
 		if err != nil {
-			return fmt.Errorf("failed running the merging algorithm: %w", err)
+			return fmt.Errorf("failed fetching JSON from S3: %w", err)
+		}
+
+		// iterate over all languages
+		for language := range languageToSentence {
+			if language != "English" {
+				continue
+			}
+
+			// grab sentence list
+			sentences, valid := languageToSentence[language].([]interface{})
+			if !valid {
+				return errors.New("Unable to parse JSON for " + language + " into a string array")
+			}
+
+			// create merges
+			err = generateStatistics(sentences, merges)
+			if err != nil {
+				return fmt.Errorf("failed running the merging algorithm: %w", err)
+			}
 		}
 	}
+
+	fmt.Println("done....", time.Since(start))
 
 	return nil
 }

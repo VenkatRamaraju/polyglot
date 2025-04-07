@@ -1,62 +1,42 @@
 package bpe
 
 import (
-	"bufio"
-	"fmt"
-	"net/http"
-	"strings"
+	"errors"
+	"normalize"
 )
 
-func Encode(text string) {
-
-	var languageMap = map[string]string{
-		"ar": "Arabic",
-		"bg": "Bulgarian",
-		"de": "German",
-		"el": "Greek",
-		"en": "English",
-		"es": "Spanish",
-		"fr": "French",
-		"hi": "Hindi",
-		"ru": "Russian",
-		"tr": "Turkish",
-		"ur": "Urdu",
-		"vi": "Vietnamese",
-		"zh": "Chinese",
-	}
-
-	url := "https://huggingface.co/datasets/xnli/resolve/main/xnli.test.tsv"
-	resp, err := http.Get(url)
-	if err != nil {
-		panic(err)
-	}
-	defer resp.Body.Close()
-
-	var buffer []byte
-	resp.Body.Read(buffer)
-	fmt.Println(string(buffer))
-
-	scanner := bufio.NewScanner(resp.Body)
-	found := make(map[string]bool)
-
-	// Skip header
-	scanner.Scan()
-
-	for scanner.Scan() {
-		line := scanner.Text()
-		parts := strings.Split(line, "\t")
-		if len(parts) < 3 {
-			continue
+// convert byte pairs to a map representation
+func generateStatistics(sentences []interface{}, merges map[[2]int]int) error {
+	for _, sentence := range sentences {
+		sentence, valid := sentence.(string)
+		if !valid {
+			return errors.New("cannnot convert to string")
 		}
-		lang := parts[0]
-		premise := parts[6] // This is the main sentence
 
-		if _, ok := languageMap[lang]; ok && !found[lang] {
-			fmt.Printf("%s (%s): %s\n", languageMap[lang], lang, premise)
-			found[lang] = true
+		// normalize sentence
+		sentence = normalize.Normalize(sentence)
+
+		// convert to unicode integers
+		var unicodePoints []int
+		for _, r := range sentence {
+			unicodePoints = append(unicodePoints, int(r))
 		}
-		if len(found) == len(languageMap) {
-			break
+
+		// create merge pairs
+		for index := range unicodePoints {
+			if index+1 >= len(unicodePoints) {
+				break
+			}
+
+			// create pair if necessary
+			pair := [2]int{unicodePoints[index], unicodePoints[index+1]}
+			if _, present := merges[pair]; !present {
+				merges[pair] = 0
+			}
+
+			// add pair
+			merges[pair] += 1
 		}
 	}
+	return nil
 }

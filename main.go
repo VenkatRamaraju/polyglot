@@ -1,8 +1,14 @@
 package main
 
-import "bpe"
+import (
+	"bpe"
+	"fmt"
+)
 
 func main() {
 	// kick off the training process
-	bpe.Train()
+	err := bpe.Train()
+	if err != nil {
+		fmt.Println(err)
+	}
 }
