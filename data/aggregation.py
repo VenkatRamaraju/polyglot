@@ -40,8 +40,8 @@ language_code_map = {
     "Chinese": "zh",
     "Japanese": "ja"
 }
-MAX_EXAMPLES = 1000000
-BATCH_SIZE = 10000
+MAX_EXAMPLES = 50000
+BATCH_SIZE = 500
 
 def upload_to_s3(language_to_sentences: List):
     """

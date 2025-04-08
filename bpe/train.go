@@ -4,11 +4,9 @@ package bpe
 import (
 	"context"
 	"encoding/json"
-	"errors"
 	"fmt"
 	"io"
 	"os"
-	"time"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/config"
@@ -136,45 +134,14 @@ func fetchJSONFromS3(bucket string, key string) (map[string]interface{}, error) 
 
 // Orchestrate the trianing process
 func Train() error {
-	// get files
-	jsonFiles, err := listS3Keys("tknzr", "us-east-1")
+	// populate merges
+	maxToken, err := populateMerges()
 	if err != nil {
-		return fmt.Errorf("unable to pull s3 files: %w", err)
+		return fmt.Errorf("error populating the merges: %w", err)
 	}
 
-	// Initialize the map to store training merges
-	merges := make(map[[2]int]int)
-
-	// get training dataset
-	start := time.Now()
-	for _, jsonFile := range jsonFiles {
-		// get the file contents
-		languageToSentence, err := fetchJSONFromS3("tknzr", jsonFile)
-		if err != nil {
-			return fmt.Errorf("failed fetching JSON from S3: %w", err)
-		}
-
-		// iterate over all languages
-		for language := range languageToSentence {
-			if language != "English" {
-				continue
-			}
-
-			// grab sentence list
-			sentences, valid := languageToSentence[language].([]interface{})
-			if !valid {
-				return errors.New("Unable to parse JSON for " + language + " into a string array")
-			}
-
-			// create merges
-			err = generateStatistics(sentences, merges)
-			if err != nil {
-				return fmt.Errorf("failed running the merging algorithm: %w", err)
-			}
-		}
-	}
-
-	fmt.Println("done....", time.Since(start))
+	// perform merges on the statistics
+	fmt.Println(maxToken)
 
 	return nil
 }
