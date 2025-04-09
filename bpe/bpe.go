@@ -1,140 +1,68 @@
 package bpe
 
 import (
-	"errors"
 	"fmt"
-	"normalize"
-	"os"
-	"sync"
 )
 
-// global variables
-var Merges = make(map[[2]int64]int)
-var mutex sync.Mutex
-var mapCount = make(map[string]int64)
-var mutex2 sync.Mutex
+// merge implements the byte pair encoding algorithm.
+// It returns an error if the merge process fails.
+func merge() error {
+	// Initialize max token value
+	mintToken := getMaxToken() + 1
 
-// update max token
-func updateMax(maxToken *int64, currentToken int64) {
-	if currentToken > *maxToken {
-		*maxToken = currentToken
-	}
-}
+	// Before vocab size
+	oldSequence := getTotalSequenceLength()
 
-// insert into map
-func insert(pair [2]int64) {
-	mutex.Lock()
-	defer mutex.Unlock()
-	Merges[pair]++
-}
+	for {
+		// Clear the map of previous statistics
+		clearMerges()
 
-// insert into map
-func counts(language string, length int) {
-	mutex.Lock()
-	defer mutex.Unlock()
-	// if _, tfOK := mapCount[language]; !tfOK {
-	// 	mapCount[language] = 0
-	// }
-	mapCount[language] += int64(length)
-}
-
-// populate the merges map in parallel
-func populateMerges() (int64, error) {
-	// get files
-	jsonFiles, err := listS3Keys("tknzr", "us-east-1")
-	if err != nil {
-		return -1, fmt.Errorf("unable to pull s3 files: %w", err)
-	}
-
-	// Initialize the map to store training merges
-	var maxToken int64
-
-	// get training dataset - we can populate map in parallel
-	var wg sync.WaitGroup
-	ch := make(chan error)
-	for _, jsonFile := range jsonFiles {
-		wg.Add(1)
-		go func() {
-			// decrement counter
-			defer wg.Done()
-
-			// get the file contents
-			languageToSentence, err := fetchJSONFromS3("tknzr", jsonFile)
-			if err != nil {
-				ch <- fmt.Errorf("failed fetching JSON from S3: %w", err)
-			}
-
-			// iterate over all languages
-			for language := range languageToSentence {
-				// grab sentence list
-				sentences, valid := languageToSentence[language].([]interface{})
-				if !valid {
-					ch <- errors.New("Unable to parse JSON for " + language + " into a string array")
-				}
-
-				counts(language, len(sentences))
-
-				// // create merges
-				// err = generateStatistics(sentences, &maxToken)
-				// if err != nil {
-				// 	ch <- fmt.Errorf("failed running the merging algorithm: %w", err)
-				// }
-			}
-		}()
-	}
-
-	// wait for all routines to finish
-	wg.Wait()
-
-	// close the channel
-	close(ch)
-
-	// check if errors were encountered
-	for err := range ch {
-		return -1, fmt.Errorf("error building statistics: %w", err)
-	}
-
-	fmt.Println(mapCount)
-	os.Exit(1)
-
-	return maxToken, nil
-}
-
-// convert byte pairs to a map representation
-func generateStatistics(sentences []interface{}, maxToken *int64) error {
-	for _, sentence := range sentences {
-		sentence, valid := sentence.(string)
-		if !valid {
-			return errors.New("cannnot convert to string")
+		// Populate merge pairs based on current sentences
+		// Get the most frequently occurring pair in the map for minting
+		maxPair, err := generateMergePairs()
+		if err != nil {
+			return fmt.Errorf("failed to generate merge pairs: %w", err)
 		}
 
-		// normalize sentence
-		sentence = normalize.Normalize(sentence)
+		// replace max pair with the minted token
+		replace(maxPair, mintToken)
 
-		// convert to unicode integers
-		var unicodePoints []int64
-		for _, r := range sentence {
-			unicodePoints = append(unicodePoints, int64(r))
+		// After vocab size
+		newSequence := getTotalSequenceLength()
+
+		// calculate compression ratio
+		compression := float64(oldSequence) / float64(newSequence)
+		fmt.Println(compression, string(maxPair[0]), string(maxPair[1]))
+
+		// break after a certain ratio
+		if compression > 10 {
+			break
 		}
 
-		// check first pair of max
-		if len(unicodePoints) > 0 {
-			updateMax(maxToken, unicodePoints[0])
-		}
+		// new mint token
+		mintToken += 1
+	}
+	return nil
+}
 
-		// create merge pairs
+// generateMergePairs converts byte pairs from SentenceList into a map representation.
+// It returns an error if the insert operation fails.
+func generateMergePairs() ([2]int64, error) {
+	// track max pair and count
+	maxCount := 0
+	maxPair := [2]int64{-1, -1}
+
+	for _, unicodePoints := range SentenceList {
+		// Create merge pairs
 		for index := range unicodePoints {
-			// out of range
+			// Out of range check
 			if index+1 >= len(unicodePoints) {
 				break
 			}
 
-			// track maxes
-			updateMax(maxToken, unicodePoints[index+1])
-
-			// insert pair
-			insert([2]int64{unicodePoints[index], unicodePoints[index+1]})
+			// Insert pair
+			insertMerge([2]int64{unicodePoints[index], unicodePoints[index+1]}, &maxPair, &maxCount)
 		}
 	}
-	return nil
+	return maxPair, nil
 }

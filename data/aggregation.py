@@ -18,57 +18,56 @@ import boto3
 # Global variables
 datasets_info = {
     "English": ("opus100", "en-fr"),
-    "Spanish": ("opus100", "en-es"),
-    "Turkish": ("opus100", "en-tr"),
+    "Hebrew": ("opus100", "en-he"),
+    "Bengali": ("opus100", "en-bn"),
     "Vietnamese": ("opus100", "en-vi"),
-    "Telugu": ("opus100", "en-te"),
+    "Korean": ("opus100", "en-ko"),
     "Arabic": ("opus100", "ar-en"),
     "Russian": ("opus100", "en-ru"),
-    "Hindi": ("opus100", "en-hi"),
+    "Thai": ("opus100", "en-th"),
     "Chinese": ("opus100", "en-zh"),
     "Japanese": ("opus100", "en-ja")
 }
 language_code_map = {
     "English": "en",
-    "Spanish": "es",
-    "Turkish": "tr",
+    "Hebrew": "he",
+    "Bengali": "bn",
     "Vietnamese": "vi",
-    "Telugu": "te",
+    "Korean": "ko",
     "Arabic": "ar",
     "Russian": "ru",
-    "Hindi": "hi",
+    "Thai": "th",
     "Chinese": "zh",
     "Japanese": "ja"
 }
-MAX_EXAMPLES = 50000
-BATCH_SIZE = 500
+MAX_EXAMPLES = 1000000
+BATCH_SIZE = 10000
 
-def upload_to_s3(language_to_sentences: List):
+def upload_to_s3(language_to_sentences: List[Dict[str, List[str]]]):
     """
-    Upload to S3
+    Uploads a batch of sentences to S3.
 
     Args:
-        language_to_sentences: Dictionary of language to sentence set mapping
+        language_to_sentences: A list of dictionaries mapping languages to their respective sentences.
     """
     i = 0
     for batch in language_to_sentences:
-        # Upload
+        # Initialize S3 client
         s3 = boto3.client('s3', aws_access_key_id=os.environ["AWS_ACCESS_KEY_ID"],
-                        aws_secret_access_key=os.environ["AWS_SECRET_ACCESS_KEY"])
+                          aws_secret_access_key=os.environ["AWS_SECRET_ACCESS_KEY"])
         json_data = json.dumps(batch)
+        # Upload the JSON data to S3
         s3.put_object(Bucket="tknzr", Key="raw_" + str(i) + ".json", Body=json_data)
         i += 1
-        
     print("Upload complete.")
-
 
 
 def get_data() -> dict:
     """
-    Get the sentence data from the opus dataset
+    Retrieves sentence data from various datasets.
 
     Returns:
-        dict: Language to sentences mapping
+        dict: A mapping of languages to their respective sentences.
     """
     # Initialize mapping
     language_to_sentence = {}
@@ -96,6 +95,15 @@ def get_data() -> dict:
 
 
 def batch_up(data: Dict[str, List[str]]) -> List[Dict[str, List[str]]]:
+    """
+    Batch up
+
+    Args:
+       data: Dict[str, List[str]]: Unbatche dictionary
+
+    Returns:
+        Batched values, each one with multiple language of a certain batch size
+    """
     max_len = max((len(v) for v in data.values()), default=0)
     if max_len == 0:
         return []
