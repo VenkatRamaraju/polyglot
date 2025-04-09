@@ -19,7 +19,7 @@ import boto3
 datasets_info = {
     "English": ("opus100", "en-fr"),
     "Hebrew": ("opus100", "en-he"),
-    "Bengali": ("opus100", "en-bn"),
+    "Bengali": ("opus100", "bn-en"),
     "Vietnamese": ("opus100", "en-vi"),
     "Korean": ("opus100", "en-ko"),
     "Arabic": ("opus100", "ar-en"),
