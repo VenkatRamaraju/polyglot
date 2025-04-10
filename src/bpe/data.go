@@ -3,9 +3,9 @@ package bpe
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
-	"normalize"
 	"os"
 	"sync"
 
@@ -14,60 +14,6 @@ import (
 	"github.com/aws/aws-sdk-go-v2/credentials"
 	"github.com/aws/aws-sdk-go-v2/service/s3"
 )
-
-// dataDataset holds the sentences and a mutex for concurrent access.
-type dataDataset struct {
-	aalSentences [][]int64
-	pdMutex      *sync.Mutex
-}
-
-// dataStatistics holds the frequency of pairs and a mutex for concurrent access.
-type dataStatistics struct {
-	mapPairFrequency map[[2]int64]int
-	pdMutex          *sync.Mutex
-	palMaxPair       *[2]int64
-	piMaxCount       *int
-}
-
-// insertMerge increments the count for a given pair in StatisticsMap
-// also tracks the most frequently occurring pair
-func insertMerge(dataStatistics *dataStatistics, alPair [2]int64) {
-	dataStatistics.pdMutex.Lock()
-	defer dataStatistics.pdMutex.Unlock()
-
-	// Increment pair
-	dataStatistics.mapPairFrequency[alPair]++
-
-	// update max pair
-	if dataStatistics.mapPairFrequency[alPair] > *dataStatistics.piMaxCount {
-		*dataStatistics.palMaxPair = alPair
-		*dataStatistics.piMaxCount = dataStatistics.mapPairFrequency[alPair]
-	}
-}
-
-// add a single sentence to a list
-func (d *dataDataset) add(alSentence []int64) {
-	d.pdMutex.Lock()
-	defer d.pdMutex.Unlock()
-	d.aalSentences = append(d.aalSentences, alSentence)
-}
-
-// add set of sentences to a list
-func (d *dataDataset) AddList(adataSentences []interface{}) {
-	for index := range adataSentences {
-		// Normalize the sentence
-		sentence := normalize.Normalize(adataSentences[index].(string))
-
-		// Convert to unicode integers
-		var unicodePoints []int64
-		for _, r := range sentence {
-			unicodePoints = append(unicodePoints, int64(r))
-		}
-
-		// Add to list
-		d.add(unicodePoints)
-	}
-}
 
 // CreateAWSConfigFromEnv creates an AWS config object from environment variables
 func CreateAWSConfigFromEnv(region string) (aws.Config, error) {
@@ -186,59 +132,56 @@ func fetchJSONFromS3(sBucket string, sKey string) (map[string]interface{}, error
 	return mapResult, nil
 }
 
-// getMaxToken scans a list of unicode point sequences and returns the highest token value.
-func getMaxToken(dataset *dataDataset) int64 {
-	var lMaxToken int64 = -1
-	for _, alSentence := range dataset.aalSentences {
-		for _, lToken := range alSentence {
-			if lToken > lMaxToken {
-				lMaxToken = lToken
+// getData retrieves all sentences from S3
+func getData() (*dataDataset, error) {
+	dataDataset := &dataDataset{pdMutex: &sync.Mutex{}}
+
+	// Get files
+	asJSONFiles, err := listS3Keys("tknzr", "us-east-1")
+	if err != nil {
+		return nil, fmt.Errorf("unable to pull s3 files: %w", err)
+	}
+
+	// Get training dataset - we can populate map in parallel
+	var dWg sync.WaitGroup
+	ch := make(chan error)
+	for _, sJSONFile := range asJSONFiles {
+		dWg.Add(1)
+		go func(qsFileName string) {
+			// Defer completion of routine
+			defer dWg.Done()
+
+			// Get the file contents
+			mapLanguageToSentence, err := fetchJSONFromS3("tknzr", qsFileName)
+			if err != nil {
+				ch <- err
+				return
 			}
-		}
-	}
-	return lMaxToken
-}
 
-// replaces one token with another
-func replace(alPair [2]int64, lMintToken int64, dataset *dataDataset) {
-	// new list
-	var aalNewList [][]int64
+			// Iterate over all languages
+			for sLanguage := range mapLanguageToSentence {
+				// Grab sentence list
+				dLanguages, valid := mapLanguageToSentence[sLanguage].([]interface{})
+				if !valid {
+					ch <- errors.New("Unable to parse JSON for " + sLanguage + " into a string array")
+				}
 
-	for _, sequence := range dataset.aalSentences {
-		index := 0
-		var alNewSequence []int64
-		for index < len(sequence)-1 {
-			if sequence[index] == alPair[0] && sequence[index+1] == alPair[1] {
-				alNewSequence = append(alNewSequence, lMintToken)
-				index += 2
-			} else {
-				alNewSequence = append(alNewSequence, sequence[index])
-				index += 1
+				// Add to list
+				dataDataset.AddList(dLanguages)
 			}
-		}
-		aalNewList = append(aalNewList, alNewSequence)
+		}(sJSONFile)
 	}
+	go func() {
+		dWg.Wait()
+		close(ch)
+	}()
 
-	// reassign
-	dataset.aalSentences = aalNewList
-}
-
-// get the vocab size
-func getVocabSize(dataset *dataDataset) int {
-	mapUnique := make(map[int64]bool)
-	for _, alSequence := range dataset.aalSentences {
-		for index := range alSequence {
-			mapUnique[alSequence[index]] = true
+	// Collect errors
+	for err := range ch {
+		if err != nil {
+			return nil, err
 		}
 	}
-	return len(mapUnique)
-}
 
-// get sequence length
-func getTotalSequenceLength(dataset *dataDataset) int64 {
-	var lCount int64
-	for _, alSequence := range dataset.aalSentences {
-		lCount += int64(len(alSequence))
-	}
-	return lCount
+	return dataDataset, nil
 }

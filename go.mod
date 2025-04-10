@@ -1,9 +1,6 @@
 module tokenizer
 
-require (
-	bpe v0.0.0
-	normalize v0.0.0
-)
+require bpe v0.0.0
 
 require (
 	github.com/aws/aws-sdk-go-v2 v1.36.3 // indirect
@@ -25,11 +22,12 @@ require (
 	github.com/aws/aws-sdk-go-v2/service/sts v1.33.18 // indirect
 	github.com/aws/smithy-go v1.22.2 // indirect
 	golang.org/x/text v0.23.0 // indirect
+	normalize v0.0.0 // indirect
 )
 
 replace (
-	bpe => ./bpe
-	normalize => ./normalize
+	bpe => ./src/bpe
+	normalize => ./src/normalize
 )
 
 go 1.24.2

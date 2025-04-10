@@ -1,4 +1,3 @@
-// byte pair encoding package
 package bpe
 
 import (
@@ -14,8 +13,16 @@ func Train() error {
 	}
 
 	// Perform merges on the statistics
-	if err := merge(dataDataset); err != nil {
+	mapMerges, err := merge(dataDataset)
+	if err != nil {
 		return fmt.Errorf("error running the BPE algorithm: %w", err)
 	}
+
+	// write data to file
+	err = WriteMergesMapToJSONFile(mapMerges, "artifacts/merges.json")
+	if err != nil {
+		return fmt.Errorf("error writing merges map to file: %w", err)
+	}
+
 	return nil
 }
