@@ -3,7 +3,6 @@ package bpe
 import (
 	"context"
 	"encoding/json"
-	"errors"
 	"fmt"
 	"io"
 	"normalize"
@@ -16,41 +15,41 @@ import (
 	"github.com/aws/aws-sdk-go-v2/service/s3"
 )
 
-// StatisticsMap holds the counts of merge operations
-var StatisticsMap = make(map[[2]int64]int)
-var mergeMutex sync.Mutex
+type Dataset struct {
+	sentences [][]int64
+	mutex     sync.Mutex
+}
 
-// SentenceList holds the list of sentences as unicode points
-var SentenceList [][]int64
-var listMutex sync.Mutex
-
-// clearMerges clears the StatisticsMap
-func clearMerges() {
-	for k := range StatisticsMap {
-		delete(StatisticsMap, k)
-	}
+type Statistics struct {
+	pairFrequency map[[2]int64]int
+	mutex         sync.Mutex
+	maxPair       *[2]int64
+	maxCount      *int
 }
 
 // insertMerge increments the count for a given pair in StatisticsMap
 // also tracks the most frequently occurring pair
-func insertMerge(pair [2]int64, maxPair *[2]int64, maxCount *int) {
-	mergeMutex.Lock()
-	defer mergeMutex.Unlock()
+func insertMerge(statistics *Statistics, pair [2]int64) {
+	statistics.mutex.Lock()
+	defer statistics.mutex.Unlock()
 
 	// Increment pair
-	StatisticsMap[pair]++
+	statistics.pairFrequency[pair]++
 
 	// update max pair
-	if StatisticsMap[pair] > *maxCount {
-		*maxPair = pair
-		*maxCount = StatisticsMap[pair]
+	if statistics.pairFrequency[pair] > *statistics.maxCount {
+		*statistics.maxPair = pair
+		*statistics.maxCount = statistics.pairFrequency[pair]
 	}
 }
 
-// addToList adds normalized sentences to SentenceList
-func addToList(sentences []interface{}) {
-	listMutex.Lock()
-	defer listMutex.Unlock()
+func (d *Dataset) add(item []int64) {
+	d.mutex.Lock()
+	defer d.mutex.Unlock()
+	d.sentences = append(d.sentences, item)
+}
+
+func (d *Dataset) AddList(sentences []interface{}) {
 	for index := range sentences {
 		// Normalize the sentence
 		sentence := normalize.Normalize(sentences[index].(string))
@@ -62,8 +61,10 @@ func addToList(sentences []interface{}) {
 		}
 
 		// Add to 2d list
-		SentenceList = append(SentenceList, unicodePoints)
+		d.add(unicodePoints)
+
 	}
+
 }
 
 // CreateAWSConfigFromEnv creates an AWS config object from environment variables
@@ -184,61 +185,10 @@ func fetchJSONFromS3(bucket string, key string) (map[string]interface{}, error) 
 	return result, nil
 }
 
-// populateData retrieves all sentences from S3 and populates SentenceList
-func populateData() error {
-	// Get files
-	jsonFiles, err := listS3Keys("tknzr", "us-east-1")
-	if err != nil {
-		return fmt.Errorf("unable to pull s3 files: %w", err)
-	}
-
-	// Get training dataset - we can populate map in parallel
-	var wg sync.WaitGroup
-	ch := make(chan error)
-	for _, jsonFile := range jsonFiles {
-		wg.Add(1)
-		go func(fileName string) {
-			// Defer completion of routine
-			defer wg.Done()
-
-			// Get the file contents
-			languageToSentence, err := fetchJSONFromS3("tknzr", fileName)
-			if err != nil {
-				ch <- err
-			}
-
-			// Iterate over all languages
-			for language := range languageToSentence {
-				// Grab sentence list
-				sentences, valid := languageToSentence[language].([]interface{})
-				if !valid {
-					ch <- errors.New("Unable to parse JSON for " + language + " into a string array")
-				}
-
-				// Add to list
-				addToList(sentences)
-			}
-		}(jsonFile)
-	}
-	go func() {
-		wg.Wait()
-		close(ch)
-	}()
-
-	// Collect errors
-	for err := range ch {
-		if err != nil {
-			return err
-		}
-	}
-
-	return nil
-}
-
 // getMaxToken scans a list of unicode point sequences and returns the highest token value.
-func getMaxToken() int64 {
+func getMaxToken(dataset *Dataset) int64 {
 	var maxToken int64 = -1
-	for _, sequence := range SentenceList {
+	for _, sequence := range dataset.sentences {
 		for _, token := range sequence {
 			if token > maxToken {
 				maxToken = token
@@ -249,11 +199,11 @@ func getMaxToken() int64 {
 }
 
 // replaces one token with another
-func replace(pair [2]int64, mintToken int64) {
+func replace(pair [2]int64, mintToken int64, dataset *Dataset) {
 	// new list
 	var newList [][]int64
 
-	for _, sequence := range SentenceList {
+	for _, sequence := range dataset.sentences {
 		index := 0
 		var newSequence []int64
 		for index < len(sequence)-1 {
@@ -269,13 +219,13 @@ func replace(pair [2]int64, mintToken int64) {
 	}
 
 	// reassign
-	SentenceList = newList
+	dataset.sentences = newList
 }
 
 // get the vocab size
-func getVocabSize() int {
+func getVocabSize(dataset *Dataset) int {
 	unique := make(map[int64]bool)
-	for _, sequence := range SentenceList {
+	for _, sequence := range dataset.sentences {
 		for index := range sequence {
 			unique[sequence[index]] = true
 		}
@@ -284,9 +234,9 @@ func getVocabSize() int {
 }
 
 // get sequence length
-func getTotalSequenceLength() int64 {
+func getTotalSequenceLength(dataset *Dataset) int64 {
 	var count int64
-	for _, sequence := range SentenceList {
+	for _, sequence := range dataset.sentences {
 		count += int64(len(sequence))
 	}
 	return count

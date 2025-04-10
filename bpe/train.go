@@ -9,13 +9,13 @@ import (
 // It returns an error if any step in the process fails.
 func Train() error {
 	// Get data from the source
-	err := populateData()
+	dataset, err := getData()
 	if err != nil {
-		return fmt.Errorf("error populating the merges: %w", err)
+		return fmt.Errorf("error getting data: %w", err)
 	}
 
 	// Perform merges on the statistics
-	err = merge()
+	err = merge(dataset)
 	if err != nil {
 		return fmt.Errorf("error running the BPE algorithm: %w", err)
 	}
