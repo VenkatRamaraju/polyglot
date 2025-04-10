@@ -7,45 +7,46 @@ import (
 )
 
 // getData retrieves all sentences from S3
-func getData() (*Dataset, error) {
-	dataset := &Dataset{}
+func getData() (*dataDataset, error) {
+	dataDataset := &dataDataset{pdMutex: &sync.Mutex{}}
 
 	// Get files
-	jsonFiles, err := listS3Keys("tknzr", "us-east-1")
+	asJSONFiles, err := listS3Keys("tknzr", "us-east-1")
 	if err != nil {
 		return nil, fmt.Errorf("unable to pull s3 files: %w", err)
 	}
 
 	// Get training dataset - we can populate map in parallel
-	var wg sync.WaitGroup
+	var dWg sync.WaitGroup
 	ch := make(chan error)
-	for _, jsonFile := range jsonFiles {
-		wg.Add(1)
-		go func(fileName string) {
+	for _, sJSONFile := range asJSONFiles {
+		dWg.Add(1)
+		go func(qsFileName string) {
 			// Defer completion of routine
-			defer wg.Done()
+			defer dWg.Done()
 
 			// Get the file contents
-			languageToSentence, err := fetchJSONFromS3("tknzr", fileName)
+			mapLanguageToSentence, err := fetchJSONFromS3("tknzr", qsFileName)
 			if err != nil {
 				ch <- err
+				return
 			}
 
 			// Iterate over all languages
-			for language := range languageToSentence {
+			for sLanguage := range mapLanguageToSentence {
 				// Grab sentence list
-				sentences, valid := languageToSentence[language].([]interface{})
+				dLanguages, valid := mapLanguageToSentence[sLanguage].([]interface{})
 				if !valid {
-					ch <- errors.New("Unable to parse JSON for " + language + " into a string array")
+					ch <- errors.New("Unable to parse JSON for " + sLanguage + " into a string array")
 				}
 
 				// Add to list
-				dataset.AddList(sentences)
+				dataDataset.AddList(dLanguages)
 			}
-		}(jsonFile)
+		}(sJSONFile)
 	}
 	go func() {
-		wg.Wait()
+		dWg.Wait()
 		close(ch)
 	}()
 
@@ -56,5 +57,5 @@ func getData() (*Dataset, error) {
 		}
 	}
 
-	return dataset, nil
+	return dataDataset, nil
 }

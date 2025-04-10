@@ -91,10 +91,6 @@ def get_data() -> dict:
         # Add to map
         language_to_sentence[language] = [translation[language_code_map[language]] for translation in examples["translation"]]
 
-    for thing in language_to_sentence:
-        print(thing, len(language_to_sentence[thing]))
-    exit(1)
-
     return language_to_sentence
 
 

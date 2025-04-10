@@ -5,10 +5,9 @@ import (
 	"fmt"
 )
 
+// main function initializes the application and starts the training process.
 func main() {
-	// kick off the training process
-	err := bpe.Train()
-	if err != nil {
-		fmt.Println(err)
+	if err := bpe.Train(); err != nil {
+		fmt.Println("Error during training:", err)
 	}
 }

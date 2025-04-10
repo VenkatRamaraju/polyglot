@@ -10,7 +10,7 @@ import (
 )
 
 // Regex to match whitespace
-var whitespaceRegex = regexp.MustCompile(`\s+`)
+var pdRegex = regexp.MustCompile(`\s+`)
 
 // check for emoji
 func isEmoji(r rune) bool {
@@ -26,33 +26,33 @@ func isEmoji(r rune) bool {
 }
 
 // Remove some characters that we do not want to parse (control chars, emojis, etc.)
-func removeChars(text string) string {
-	var b strings.Builder
-	for _, r := range text {
+func removeChars(sText string) string {
+	var dBuilder strings.Builder
+	for _, r := range sText {
 		if (unicode.IsPrint(r) || unicode.IsSpace(r)) && !isEmoji(r) {
-			b.WriteRune(r)
+			dBuilder.WriteRune(r)
 		}
 	}
-	return b.String()
+	return dBuilder.String()
 }
 
 // Normalize Unicode characters
-func normalizeUnicode(text string) string {
-	return norm.NFKC.String(text)
+func normalizeUnicode(sText string) string {
+	return norm.NFKC.String(sText)
 }
 
 // Reduce whitespace to single spaces
-func normalizeWhitespace(text string) string {
-	return strings.TrimSpace(whitespaceRegex.ReplaceAllString(text, " "))
+func normalizeWhitespace(sText string) string {
+	return strings.TrimSpace(pdRegex.ReplaceAllString(sText, " "))
 }
 
 // Normalize
-func Normalize(text string) string {
+func Normalize(sText string) string {
 	// pre processing operations
-	text = removeChars(text)
-	text = normalizeUnicode(text)
-	text = normalizeWhitespace(text)
+	sText = removeChars(sText)
+	sText = normalizeUnicode(sText)
+	sText = normalizeWhitespace(sText)
 
 	// return normalized string
-	return strings.ToLower(text)
+	return strings.ToLower(sText)
 }
