@@ -27,29 +27,29 @@ func CreateAWSConfigFromEnv(region string) (aws.Config, error) {
 	}
 
 	// Establish configuration
-	dataCredentials := aws.NewCredentialsCache(credentials.NewStaticCredentialsProvider(sAccessKey, sSecretKey, ""))
-	dataConfiguration, err := config.LoadDefaultConfig(context.TODO(),
+	pdCredentials := aws.NewCredentialsCache(credentials.NewStaticCredentialsProvider(sAccessKey, sSecretKey, ""))
+	pdConfiguration, err := config.LoadDefaultConfig(context.TODO(),
 		config.WithRegion(region),
-		config.WithCredentialsProvider(dataCredentials),
+		config.WithCredentialsProvider(pdCredentials),
 	)
 	if err != nil {
 		return aws.Config{}, fmt.Errorf("failed to load AWS config: %w", err)
 	}
 
 	// Return configuration
-	return dataConfiguration, nil
+	return pdConfiguration, nil
 }
 
 // listS3Keys retrieves all keys in an S3 bucket
 func listS3Keys(sBucket string, sRegion string) ([]string, error) {
 	// Get configuration
-	dataConfiguration, err := CreateAWSConfigFromEnv(sRegion)
+	pdConfiguration, err := CreateAWSConfigFromEnv(sRegion)
 	if err != nil {
 		return nil, err
 	}
 
 	// Get S3 client
-	dataClient := s3.NewFromConfig(dataConfiguration)
+	dataClient := s3.NewFromConfig(pdConfiguration)
 
 	// Track variables
 	var asKeys []string
@@ -63,8 +63,8 @@ func listS3Keys(sBucket string, sRegion string) ([]string, error) {
 		if err != nil {
 			return nil, fmt.Errorf("failed to list objects: %w", err)
 		}
-		for _, obj := range pdResponse.Contents {
-			asKeys = append(asKeys, aws.ToString(obj.Key))
+		for _, dataContents := range pdResponse.Contents {
+			asKeys = append(asKeys, aws.ToString(dataContents.Key))
 		}
 
 		// End
@@ -96,7 +96,7 @@ func fetchJSONFromS3(sBucket string, sKey string) (map[string]interface{}, error
 	}
 
 	// Set up custom AWS config with static credentials
-	dataConfiguration, err := config.LoadDefaultConfig(dataContext,
+	pdConfiguration, err := config.LoadDefaultConfig(dataContext,
 		config.WithRegion(sRegion),
 		config.WithCredentialsProvider(
 			credentials.NewStaticCredentialsProvider(sAccessKey, sSecretKey, ""),
@@ -107,7 +107,7 @@ func fetchJSONFromS3(sBucket string, sKey string) (map[string]interface{}, error
 	}
 
 	// Create S3 client
-	pdClient := s3.NewFromConfig(dataConfiguration)
+	pdClient := s3.NewFromConfig(pdConfiguration)
 
 	// Fetch object
 	dataResponse, err := pdClient.GetObject(dataContext, &s3.GetObjectInput{
@@ -124,6 +124,8 @@ func fetchJSONFromS3(sBucket string, sKey string) (map[string]interface{}, error
 	if err != nil {
 		return nil, fmt.Errorf("failed to read object body: %w", err)
 	}
+
+	// unmarshal into map
 	var mapResult map[string]interface{}
 	if err := json.Unmarshal(abBody, &mapResult); err != nil {
 		return nil, fmt.Errorf("failed to unmarshal JSON: %w", err)
@@ -142,7 +144,7 @@ func getData() (*dataDataset, error) {
 		return nil, fmt.Errorf("unable to pull s3 files: %w", err)
 	}
 
-	// Get training dataset - we can populate map in parallel
+	// Get training dataset - we can populate map in parallel by maintaining a mutex
 	var dWg sync.WaitGroup
 	ch := make(chan error)
 	for _, sJSONFile := range asJSONFiles {

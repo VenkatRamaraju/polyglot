@@ -12,13 +12,14 @@ func main() {
 	psFunction := flag.String("func", "", "Configuration File")
 	flag.Parse()
 
+	// execute the instruction
 	if *psFunction == "t" {
-		// train
+		// train mode
 		if err := bpe.Train(); err != nil {
 			fmt.Println("Error during training:", err)
 		}
 	} else {
-		// Encode-decode demonstration
+		// api mode
 		if err := bpe.EncodeDecode("artifacts/merges.json"); err != nil {
 			fmt.Println("Error during training:", err)
 		}

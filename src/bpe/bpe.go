@@ -14,54 +14,58 @@ func merge(dataDataset *dataDataset) (*Merges, error) {
 	lOldSequenceLength := getTotalSequenceLength(dataDataset)
 
 	// store merges
-	mapMerges := &Merges{
+	dataMerges := &Merges{
 		mapMerges: make(map[[2]int64]int64),
 		alKeys:    [][2]int64{},
 	}
 
 	for {
 		// initialize a map
-		dataMergeStatistics := &dataStatistics{
+		pdMergeStatistics := &dataStatistics{
 			mapPairFrequency: make(map[[2]int64]int),
 			pdMutex:          &sync.Mutex{},
 		}
 
 		// Populate merge pairs based on current sentences
-		// Get the most frequently occurring pair in the map for minting
-		err := generateMergePairs(dataMergeStatistics, dataDataset)
+		// Store the most frequently occurring pair
+		err := countStatistics(pdMergeStatistics, dataDataset)
 		if err != nil {
 			return nil, fmt.Errorf("failed to generate merge pairs: %w", err)
 		}
 
 		// store merges
-		mapMerges.insertMerge(*dataMergeStatistics.palMaxPair, lMintToken)
+		dataMerges.insertMerge(*pdMergeStatistics.palMaxPair, lMintToken)
 
 		// replace max pair with the minted token
-		replace(*dataMergeStatistics.palMaxPair, lMintToken, dataDataset)
+		replace(*pdMergeStatistics.palMaxPair, lMintToken, dataDataset)
 
 		// After vocab size
 		newSequence := getTotalSequenceLength(dataDataset)
 
 		// calculate compression ratio
 		fCompressionRatio := float64(lOldSequenceLength) / float64(newSequence)
-		fmt.Println(fCompressionRatio, string(dataMergeStatistics.palMaxPair[0]), string(dataMergeStatistics.palMaxPair[1]))
+		fmt.Println(fCompressionRatio, string(pdMergeStatistics.palMaxPair[0]), string(pdMergeStatistics.palMaxPair[1]))
 
 		// Break after a certain ratio
 		if fCompressionRatio > 1.1 {
 			break
 		}
+
+		// next minted token
 		lMintToken += 1
 	}
-	return mapMerges, nil
+	return dataMerges, nil
 }
 
-// generateMergePairs analyzes the dataset's sentences to create and track pairs of adjacent unicode points.
-func generateMergePairs(dataStatistics *dataStatistics, dataDataset *dataDataset) error {
+// countStatistics analyzes the dataset's sentences to create and track pairs of adjacent unicode points.
+func countStatistics(dataStatistics *dataStatistics, dataDataset *dataDataset) error {
+	// variables to track
 	iMaxCount := 0
 	alMaxPair := [2]int64{-1, -1}
 	dataStatistics.piMaxCount = &iMaxCount
 	dataStatistics.palMaxPair = &alMaxPair
 
+	// Count each occurence
 	for _, alUnicode := range dataDataset.aalSentences {
 		for iIndex := range alUnicode {
 			if iIndex+1 >= len(alUnicode) {

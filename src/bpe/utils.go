@@ -2,7 +2,6 @@ package bpe
 
 import (
 	"normalize"
-	"strconv"
 	"sync"
 )
 
@@ -85,10 +84,6 @@ func getMaxToken(dataset *dataDataset) int64 {
 		}
 	}
 	return lMaxToken
-}
-
-func pairToKey(alPair [2]int64) string {
-	return strconv.FormatInt(int64(alPair[0]), 10) + "," + strconv.FormatInt(int64(alPair[1]), 10)
 }
 
 // replaces one token with another
