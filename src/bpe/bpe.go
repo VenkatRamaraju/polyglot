@@ -47,7 +47,7 @@ func merge(dataDataset *dataDataset) (*Merges, error) {
 		fmt.Println(fCompressionRatio, string(pdMergeStatistics.palMaxPair[0]), string(pdMergeStatistics.palMaxPair[1]))
 
 		// Break after a certain ratio
-		if fCompressionRatio > 1.1 {
+		if fCompressionRatio > 5 {
 			break
 		}
 
