@@ -115,8 +115,14 @@ func getSmallestMintedTokenPair(dataStatistics *dataStatistics, mapMerges map[st
 	return minPair, tfFound
 }
 
-// encode: convert a string to a token list (integers)
-func encode(mapMerges map[string]interface{}, sInput string) ([]int64, error) {
+func listToTokens(tokenList []int64) ([]string, error) {
+	fmt.Println()
+
+	return nil, nil
+}
+
+// Encode: convert a string to a token list (integers)
+func Encode(mapMerges map[string]interface{}, sInput string) ([]int64, error) {
 	// Convert input to unicode integers
 	var unicodePoints []int64
 	for _, r := range sInput {
@@ -158,8 +164,8 @@ func encode(mapMerges map[string]interface{}, sInput string) ([]int64, error) {
 	return dataset.aalSentences[0], nil
 }
 
-// decode: convert a token list (integers) to a string
-func decode(mapTokenizer map[string]interface{}, tokens []int64) (string, error) {
+// Decode: convert a token list (integers) to a string
+func Decode(mapTokenizer map[string]interface{}, tokens []int64) (string, error) {
 	// get the highest token
 	mapOrdering, tfOK := mapTokenizer["ordering"]
 	if !tfOK {
@@ -177,21 +183,21 @@ func decode(mapTokenizer map[string]interface{}, tokens []int64) (string, error)
 	// convert to key
 	alTokens, tfOK := lMaxToken.([]interface{})
 	if !tfOK {
-		return "", errors.New("Highest token is not inferrable")
+		return "", errors.New("highest token is not inferrable")
 	}
 	fFirstToken, tfOK := alTokens[0].(float64)
 	if !tfOK {
-		return "", errors.New("Malformed first token in merges map")
+		return "", errors.New("malformed first token in merges map")
 	}
 	fSecondToken, tfOK := alTokens[1].(float64)
 	if !tfOK {
-		return "", errors.New("Malformed second token in merges map")
+		return "", errors.New("malformed second token in merges map")
 	}
 
 	// initial population
 	dataMerges, tfOK := mapTokenizer["merges"]
 	if !tfOK {
-		return "", errors.New("Map merges does not exist!")
+		return "", errors.New("map merges does not exist")
 	}
 	mapMerges, tfOK := dataMerges.(map[string]interface{})
 	if !tfOK {
@@ -201,11 +207,11 @@ func decode(mapTokenizer map[string]interface{}, tokens []int64) (string, error)
 	// get the max token
 	dataMaxToken, tfOK := mapMerges[keyToString([2]int64{int64(fFirstToken), int64(fSecondToken)})]
 	if !tfOK {
-		return "", errors.New("No max token exists")
+		return "", errors.New("no max token exists")
 	}
 	fMaxToken, tfOK := dataMaxToken.(float64)
 	if !tfOK {
-		return "", errors.New("Token type is not int/float")
+		return "", errors.New("token type is not int/float")
 	}
 	iMaxToken := int64(fMaxToken)
 
@@ -221,37 +227,37 @@ func decode(mapTokenizer map[string]interface{}, tokens []int64) (string, error)
 	for _, lMintedKey := range aalInsertOrder {
 		alTokens, tfOK = lMintedKey.([]interface{})
 		if !tfOK {
-			return "", errors.New("Tokens type cannot be inferred")
+			return "", errors.New("tokens type cannot be inferred")
 		}
 		if len(alTokens) != 2 {
-			return "", errors.New("Incorrect token count")
+			return "", errors.New("cncorrect token count")
 		}
 		fFirstToken, tfOK = alTokens[0].(float64)
 		if !tfOK {
-			return "", errors.New("Cannot convert first token to float")
+			return "", errors.New("cannot convert first token to float")
 		}
 		fSecondToken, tfOK := alTokens[1].(float64)
 		if !tfOK {
-			return "", errors.New("Cannot convert second token to float")
+			return "", errors.New("cannot convert second token to float")
 		}
 
 		// get token
 		dataMerges, tfOK := mapTokenizer["merges"]
 		if !tfOK {
-			return "", errors.New("Map merges does not exist!")
+			return "", errors.New("map merges does not exist")
 		}
 		mapMerges, tfOK := dataMerges.(map[string]interface{})
 		if !tfOK {
-			return "", errors.New("Merges map type is incorrect")
+			return "", errors.New("merges map type is incorrect")
 		}
 		sKey := keyToString([2]int64{int64(fFirstToken), int64(fSecondToken)})
 		dataMintedToken, tfOK := mapMerges[sKey]
 		if !tfOK {
-			return "", errors.New("Minted token does not exist!")
+			return "", errors.New("minted token does not exist")
 		}
 		fMintedToken, tfOK := dataMintedToken.(float64)
 		if !tfOK {
-			return "", errors.New("Minted token is not float!")
+			return "", errors.New("minted token is not float")
 		}
 
 		// override
@@ -288,19 +294,20 @@ func EncodeDecode(sFilePath string) error {
 
 	// encode a string
 	sInput := "there is a lot of work to do"
-	alEncoded, err := encode(mapMerges["merges"].(map[string]interface{}), sInput)
+	alEncoded, err := Encode(mapMerges["merges"].(map[string]interface{}), sInput)
 	if err != nil {
 		return fmt.Errorf("unable to encode: %w", err)
 	}
 
 	// decode it
-	sDecoded, err := decode(mapMerges, alEncoded)
+	sDecoded, err := Decode(mapMerges, alEncoded)
 	if err != nil {
 		return fmt.Errorf("failed to decode list: %w", err)
 	}
 
 	fmt.Println("Original String:", sInput)
 	fmt.Println("Encoded List:", alEncoded)
+	fmt.Println("Encoded characters:", alEncoded)
 	fmt.Println("Decoded String:", sDecoded)
 	fmt.Println("Encode equals Decode:", sInput == sDecoded)
 
