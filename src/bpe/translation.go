@@ -115,10 +115,69 @@ func getSmallestMintedTokenPair(dataStatistics *dataStatistics, mapMerges map[st
 	return minPair, tfFound
 }
 
-func listToTokens(tokenList []int64) ([]string, error) {
-	fmt.Println()
+// recursively get the characters that make up this set, return as string
+func getCharacterComposition(token int64, mapMerges map[string]interface{}) ([]string, error) {
+	// iterate over map
+	var asComponents []string
+	for sPair, interfaceToken := range mapMerges {
+		// convert to long
+		fToken, tfOK := interfaceToken.(float64)
+		if !tfOK {
+			return nil, errors.New("failed to convert token to float")
+		}
+		lToken := int64(fToken)
 
-	return nil, nil
+		// check if found
+		if token == lToken {
+			// this token is composed of many tokens
+			alPair, err := stringToKey(sPair)
+			if err != nil {
+				return nil, fmt.Errorf("failed to convert string to pair: %w", err)
+			}
+
+			// get sub-components
+			asSubComponents1, err := getCharacterComposition(alPair[0], mapMerges)
+			if err != nil {
+				return nil, fmt.Errorf("failed to first pair to its subcomponents: %w", err)
+			}
+			asSubComponents2, err := getCharacterComposition(alPair[1], mapMerges)
+			if err != nil {
+				return nil, fmt.Errorf("failed to convert second pair to its subcomponents: %w", err)
+			}
+
+			// add all components
+			asComponents = append(asComponents, asSubComponents1...)
+			asComponents = append(asComponents, asSubComponents2...)
+
+			// we have broken down this token, complete
+			break
+		}
+	}
+
+	if len(asComponents) > 0 {
+		return asComponents, nil
+	} else {
+		return []string{string(token)}, nil
+	}
+}
+
+// list tokens to character sets
+func listToTokens(tokenList []int64, mapMerges map[string]interface{}) ([]string, error) {
+	// convert every token to its character
+	var asTokens []string
+	for iIndex := range tokenList {
+		// get list of characters for this one token
+		asComponents, err := getCharacterComposition(tokenList[iIndex], mapMerges)
+		if err != nil {
+			return nil, fmt.Errorf("unable to get components of a token: %w", err)
+		}
+
+		// add to token list
+		asTokens = append(asTokens, strings.Join(asComponents, ""))
+
+	}
+
+	return asTokens, nil
 }
 
 // Encode: convert a string to a token list (integers)
@@ -299,6 +358,12 @@ func EncodeDecode(sFilePath string) error {
 		return fmt.Errorf("unable to encode: %w", err)
 	}
 
+	// convert to character set
+	asTokens, err := listToTokens(alEncoded, mapMerges["merges"].(map[string]interface{}))
+	if err != nil {
+		return fmt.Errorf("unable to convert to token list: %w", err)
+	}
+
 	// decode it
 	sDecoded, err := Decode(mapMerges, alEncoded)
 	if err != nil {
@@ -307,6 +372,12 @@ func EncodeDecode(sFilePath string) error {
 
 	fmt.Println("Original String:", sInput)
 	fmt.Println("Encoded List:", alEncoded)
+	fmt.Println("Token list:")
+	var asFormatted []string
+	for _, sToken := range asTokens {
+		asFormatted = append(asFormatted, "\""+sToken+"\"")
+	}
+	fmt.Println(asFormatted)
 	fmt.Println("Encoded characters:", alEncoded)
 	fmt.Println("Decoded String:", sDecoded)
 	fmt.Println("Encode equals Decode:", sInput == sDecoded)
