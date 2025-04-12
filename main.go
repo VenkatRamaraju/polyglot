@@ -4,6 +4,7 @@ import (
 	"bpe"
 	"flag"
 	"fmt"
+	"tokenizer/src/server"
 )
 
 // main function initializes the application and starts the training process.
@@ -20,8 +21,6 @@ func main() {
 		}
 	} else {
 		// api mode
-		if err := bpe.EncodeDecode("artifacts/merges.json"); err != nil {
-			fmt.Println("Error during training:", err)
-		}
+		server.Launch()
 	}
 }

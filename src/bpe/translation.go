@@ -161,8 +161,8 @@ func getCharacterComposition(token int64, mapMerges map[string]interface{}) ([]s
 	}
 }
 
-// list tokens to character sets
-func listToTokens(tokenList []int64, mapMerges map[string]interface{}) ([]string, error) {
+// ListToTokens: list tokens to character sets
+func ListToTokens(tokenList []int64, mapMerges map[string]interface{}) ([]string, error) {
 	// convert every token to its character
 	var asTokens []string
 	for iIndex := range tokenList {
@@ -359,7 +359,7 @@ func EncodeDecode(sFilePath string) error {
 	}
 
 	// convert to character set
-	asTokens, err := listToTokens(alEncoded, mapMerges["merges"].(map[string]interface{}))
+	asTokens, err := ListToTokens(alEncoded, mapMerges["merges"].(map[string]interface{}))
 	if err != nil {
 		return fmt.Errorf("unable to convert to token list: %w", err)
 	}

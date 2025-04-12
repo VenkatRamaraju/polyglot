@@ -1,5 +1,7 @@
 module tokenizer
 
+go 1.24.2
+
 require bpe v0.0.0
 
 require (
@@ -29,5 +31,3 @@ replace (
 	bpe => ./src/bpe
 	normalize => ./src/normalize
 )
-
-go 1.24.2
