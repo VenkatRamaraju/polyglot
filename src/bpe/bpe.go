@@ -3,6 +3,7 @@ package bpe
 import (
 	"fmt"
 	"sync"
+	"time"
 )
 
 // merge implements the byte pair encoding algorithm and returns an error if the merge process fails.
@@ -18,6 +19,9 @@ func merge(dataDataset *dataDataset) (*Merges, error) {
 		mapMerges: make(map[[2]int64]int64),
 		alKeys:    [][2]int64{},
 	}
+
+	// start time
+	start := time.Now()
 
 	for {
 		// initialize a map
@@ -44,7 +48,7 @@ func merge(dataDataset *dataDataset) (*Merges, error) {
 
 		// calculate compression ratio
 		fCompressionRatio := float64(lOldSequenceLength) / float64(newSequence)
-		fmt.Println(fCompressionRatio, string(pdMergeStatistics.palMaxPair[0]), string(pdMergeStatistics.palMaxPair[1]))
+		fmt.Println(time.Since(start), fCompressionRatio, string(pdMergeStatistics.palMaxPair[0]), string(pdMergeStatistics.palMaxPair[1]))
 
 		// Break after a certain ratio
 		if fCompressionRatio > 5 {

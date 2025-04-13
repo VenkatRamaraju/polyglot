@@ -90,21 +90,33 @@ func getMaxToken(dataset *dataDataset) int64 {
 func replace(alPair [2]int64, lMintToken int64, dataset *dataDataset) {
 	// new list
 	var aalNewList [][]int64
+	var mutex sync.Mutex
+	var wg sync.WaitGroup
 
+	// do it in parallel
 	for _, sequence := range dataset.aalSentences {
-		index := 0
-		var alNewSequence []int64
-		for index < len(sequence) {
-			if index < len(sequence)-1 && sequence[index] == alPair[0] && sequence[index+1] == alPair[1] {
-				alNewSequence = append(alNewSequence, lMintToken)
-				index += 2
-			} else {
-				alNewSequence = append(alNewSequence, sequence[index])
-				index += 1
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			index := 0
+			var alNewSequence []int64
+			for index < len(sequence) {
+				if index < len(sequence)-1 && sequence[index] == alPair[0] && sequence[index+1] == alPair[1] {
+					alNewSequence = append(alNewSequence, lMintToken)
+					index += 2
+				} else {
+					alNewSequence = append(alNewSequence, sequence[index])
+					index += 1
+				}
 			}
-		}
-		aalNewList = append(aalNewList, alNewSequence)
+			mutex.Lock()
+			aalNewList = append(aalNewList, alNewSequence)
+			mutex.Unlock()
+		}()
 	}
+
+	// wait till all threads are complete
+	wg.Wait()
 
 	// reassign
 	dataset.aalSentences = aalNewList

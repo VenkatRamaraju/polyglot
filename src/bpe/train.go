@@ -12,6 +12,9 @@ func Train() error {
 		return fmt.Errorf("error getting data: %w", err)
 	}
 
+	// Notify
+	fmt.Println("Done getting data")
+
 	// Perform merges on the statistics
 	dataMerges, err := merge(pdDataset)
 	if err != nil {

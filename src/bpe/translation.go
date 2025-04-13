@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"math"
+	"normalize"
 	"os"
 	"strconv"
 	"strings"
@@ -182,6 +183,9 @@ func ListToTokens(tokenList []int64, mapMerges map[string]interface{}) ([]string
 
 // Encode: convert a string to a token list (integers)
 func Encode(mapMerges map[string]interface{}, sInput string) ([]int64, error) {
+	// normalize string
+	sInput = normalize.Normalize(sInput)
+
 	// Convert input to unicode integers
 	var unicodePoints []int64
 	for _, r := range sInput {
