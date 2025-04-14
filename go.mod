@@ -1,4 +1,4 @@
-module tokenizer
+module polyglot
 
 go 1.24.2
 

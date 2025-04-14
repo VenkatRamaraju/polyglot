@@ -1,7 +1,11 @@
 package bpe
 
 import (
+	"encoding/json"
+	"errors"
+	"fmt"
 	"normalize"
+	"os"
 	"sync"
 )
 
@@ -123,14 +127,49 @@ func replace(alPair [2]int64, lMintToken int64, dataset *dataDataset) {
 }
 
 // get the vocab size
-func getVocabSize(dataset *dataDataset) int {
-	mapUnique := make(map[int64]bool)
-	for _, alSequence := range dataset.aalSentences {
-		for index := range alSequence {
-			mapUnique[alSequence[index]] = true
+func getVocabSize(dataset *dataDataset, mapTokenizer map[string]interface{}) (int, error) {
+	// vocabulary size variable
+	mapUniqueTokens := make(map[int64]bool)
+
+	// get all unique tokens from all sentences
+	for _, alSentence := range dataset.aalSentences {
+		for _, lToken := range alSentence {
+			mapUniqueTokens[lToken] = true
 		}
 	}
-	return len(mapUnique)
+
+	// get all unique minted tokens
+	dataMerges, tfOK := mapTokenizer["merges"]
+	if !tfOK {
+		return -1, errors.New("map merges does not exist")
+	}
+	mapMerges, tfOK := dataMerges.(map[string]interface{})
+	if !tfOK {
+		return -1, errors.New("Merges map type is incorrect")
+	}
+
+	return len(mapUniqueTokens) + len(mapMerges), nil
+}
+
+// loadMergesMap loads the merges map from the JSON file
+func LoadMergesMap() (map[string]interface{}, error) {
+	// Read merges map from JSON file
+	pdFile, err := os.Open("artifacts/merges.json")
+	if err != nil {
+		return nil, fmt.Errorf("failed to open merges file: %w", err)
+	}
+	defer pdFile.Close()
+
+	// Create a map to store the JSON data
+	var artifactsMap map[string]interface{}
+
+	// Decode the JSON data into the map
+	decoder := json.NewDecoder(pdFile)
+	if err = decoder.Decode(&artifactsMap); err != nil {
+		return nil, fmt.Errorf("failed to decode merges map: %w", err)
+	}
+
+	return artifactsMap, nil
 }
 
 // get sequence length

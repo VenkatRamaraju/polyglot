@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"log"
 	"net/http"
-	"os"
 	"sync"
 
 	"bpe"
@@ -27,7 +26,7 @@ func Launch() {
 	// Pre-load the merges map
 	pdSync.Do(func() {
 		var err error
-		mapMerges, err = loadMergesMap()
+		mapMerges, err = bpe.LoadMergesMap()
 		if err != nil {
 			log.Fatalf("Failed to load merges map: %s", err)
 		}
@@ -41,27 +40,6 @@ func Launch() {
 	if err := http.ListenAndServe(":8080", nil); err != nil {
 		log.Fatalf("Server failed: %s", err)
 	}
-}
-
-// loadMergesMap loads the merges map from the JSON file
-func loadMergesMap() (map[string]interface{}, error) {
-	// Read merges map from JSON file
-	pdFile, err := os.Open("artifacts/merges.json")
-	if err != nil {
-		return nil, fmt.Errorf("failed to open merges file: %w", err)
-	}
-	defer pdFile.Close()
-
-	// Create a map to store the JSON data
-	var artifactsMap map[string]interface{}
-
-	// Decode the JSON data into the map
-	decoder := json.NewDecoder(pdFile)
-	if err = decoder.Decode(&artifactsMap); err != nil {
-		return nil, fmt.Errorf("failed to decode merges map: %w", err)
-	}
-
-	return artifactsMap, nil
 }
 
 // Response structure for the encode endpoint

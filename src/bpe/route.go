@@ -29,3 +29,30 @@ func Train() error {
 
 	return nil
 }
+
+func GetVocabularySize() error {
+	// Get data from the source
+	pdDataset, err := getData()
+	if err != nil {
+		return fmt.Errorf("error getting data: %w", err)
+	}
+
+	// Notify
+	fmt.Println("Done getting data")
+
+	// Load the merges map
+	mapMerges, err := LoadMergesMap()
+	if err != nil {
+		return fmt.Errorf("Failed to load merges map: %s", err)
+	}
+
+	// get the vocab size
+	vocabularySize, err := getVocabSize(pdDataset, mapMerges)
+	if err != nil {
+		return fmt.Errorf("Error getting vocabulary size: %s", err)
+	}
+
+	fmt.Println("The vocabulary size is", vocabularySize)
+
+	return nil
+}

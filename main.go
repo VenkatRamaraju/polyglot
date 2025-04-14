@@ -4,7 +4,7 @@ import (
 	"bpe"
 	"flag"
 	"fmt"
-	"tokenizer/src/server"
+	"polyglot/src/server"
 )
 
 // main function initializes the application and starts the training process.
@@ -17,6 +17,11 @@ func main() {
 	if *psFunction == "t" {
 		// train mode
 		if err := bpe.Train(); err != nil {
+			fmt.Println("Error during training:", err)
+		}
+	} else if *psFunction == "v" {
+		// get vocabulary size
+		if err := bpe.GetVocabularySize(); err != nil {
 			fmt.Println("Error during training:", err)
 		}
 	} else {
