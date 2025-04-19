@@ -22,7 +22,7 @@ func main() {
 	} else if *psFunction == "v" {
 		// get vocabulary size
 		if err := bpe.GetVocabularySize(); err != nil {
-			fmt.Println("Error during training:", err)
+			fmt.Println("Error while calculating vocabulary suze:", err)
 		}
 	} else {
 		// api mode

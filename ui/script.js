@@ -8,6 +8,11 @@ document.addEventListener('DOMContentLoaded', () => {
     const tokenDisplay = document.getElementById('token-display');
     const copyToDecodeBtn = document.getElementById('copy-to-decode');
 
+    // Elements for token display toggle
+    const displayToggle = document.getElementById('display-toggle');
+    const toggleText = document.getElementById('toggle-text');
+    const toggleIds = document.getElementById('toggle-ids');
+
     // Elements for decoding
     const inputTokens = document.getElementById('input-tokens');
     const decodeBtn = document.getElementById('decode-btn');
@@ -27,6 +32,38 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // Store token data for copying
     let currentTokens = [];
+
+    // Handle display toggle
+    displayToggle.addEventListener('change', () => {
+        if (displayToggle.checked) {
+            // Show Token IDs
+            tokenDisplay.classList.remove('active-display');
+            tokenDisplay.classList.add('hidden-display');
+            tokenIds.classList.remove('hidden-display');
+            tokenIds.classList.add('active-display');
+            toggleText.classList.remove('toggle-active');
+            toggleIds.classList.add('toggle-active');
+        } else {
+            // Show Token Texts
+            tokenIds.classList.remove('active-display');
+            tokenIds.classList.add('hidden-display');
+            tokenDisplay.classList.remove('hidden-display');
+            tokenDisplay.classList.add('active-display');
+            toggleIds.classList.remove('toggle-active');
+            toggleText.classList.add('toggle-active');
+        }
+    });
+
+    // Click handlers for toggle labels
+    toggleText.addEventListener('click', () => {
+        displayToggle.checked = false;
+        displayToggle.dispatchEvent(new Event('change'));
+    });
+
+    toggleIds.addEventListener('click', () => {
+        displayToggle.checked = true;
+        displayToggle.dispatchEvent(new Event('change'));
+    });
 
     // Theme toggle handler
     themeSwitch.addEventListener('change', () => {
@@ -171,6 +208,10 @@ document.addEventListener('DOMContentLoaded', () => {
             // Update token count
             tokenCount.textContent = data.tokens.length;
             
+            // Calculate and display compression ratio
+            const compressionRatio = (inputText.value.length / data.tokens.length).toFixed(2);
+            document.getElementById('compression-ratio').textContent = compressionRatio;
+            
             // Display token IDs in a visually appealing format
             formatTokenIds(data.tokens);
             
@@ -184,15 +225,24 @@ document.addEventListener('DOMContentLoaded', () => {
                 emptyState.textContent = 'No tokens to display';
                 tokenDisplay.appendChild(emptyState);
             } else {
-                // Create token elements with staggered animation
+                // Create a single flowing text with highlighted tokens
+                const tokenContainer = document.createElement('div');
+                tokenContainer.className = 'token-flow';
+                
+                // Process each token and add it to the flow
                 data.token_texts.forEach((token, index) => {
                     const tokenElement = document.createElement('span');
                     tokenElement.className = `token token-${index % 10}`;
-                    tokenElement.textContent = token.replace(/ /g, '␣'); // Replace spaces with visible space character
-                    tokenElement.style.animationDelay = `${index * 20}ms`;
-                    tokenDisplay.appendChild(tokenElement);
+                    tokenElement.textContent = token;
+                    tokenElement.dataset.tokenId = data.tokens[index];
+                    tokenContainer.appendChild(tokenElement);
                 });
+                
+                tokenDisplay.appendChild(tokenContainer);
             }
+            
+            // Ensure the display matches the toggle state
+            displayToggle.dispatchEvent(new Event('change'));
         } catch (error) {
             console.error('Error during encoding:', error);
             tokenIds.innerHTML = '';
@@ -368,6 +418,36 @@ document.addEventListener('DOMContentLoaded', () => {
                     e.target.style.backgroundColor = originalBg;
                     e.target.style.color = '';
                 }, 300);
+            });
+        }
+    });
+
+    // Add click-to-copy functionality for tokens in the text display
+    tokenDisplay.addEventListener('click', (e) => {
+        if (e.target.classList.contains('token')) {
+            const tokenId = e.target.dataset.tokenId;
+            navigator.clipboard.writeText(tokenId).then(() => {
+                // Visual feedback for copy
+                const originalFilter = e.target.style.filter;
+                e.target.style.filter = 'brightness(0.7)';
+                
+                // Show a temporary tooltip
+                const tooltip = document.createElement('div');
+                tooltip.className = 'token-tooltip';
+                tooltip.textContent = `Copied ID: ${tokenId}`;
+                
+                // Position the tooltip near the token
+                const rect = e.target.getBoundingClientRect();
+                const containerRect = tokenDisplay.getBoundingClientRect();
+                tooltip.style.left = `${rect.left - containerRect.left + tokenDisplay.scrollLeft}px`;
+                tooltip.style.top = `${rect.top - containerRect.top - 25 + tokenDisplay.scrollTop}px`;
+                
+                tokenDisplay.appendChild(tooltip);
+                
+                setTimeout(() => {
+                    e.target.style.filter = originalFilter;
+                    tokenDisplay.removeChild(tooltip);
+                }, 1000);
             });
         }
     });

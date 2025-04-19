@@ -22,6 +22,7 @@
         
         <div class="usage-guide">
             <p><strong>A powerful multilingual tokenizer for text processing</strong></p>
+            <p><strong>This tokenizer implements the Byte Pair Encoding (BPE) algorithm in Golang for efficient text tokenization.</strong></p>
             <p><strong>How to use this tokenizer:</strong></p>
             <p>1. <strong>Encoding:</strong> Enter any text in the left panel and click "Encode" to see how it's broken into tokens. You'll see both token IDs and their text representations.</p>
             <p>2. <strong>Decoding:</strong> Enter comma-separated token IDs in the right panel and click "Decode" to convert them back to text.</p>
@@ -45,20 +46,28 @@
                             <span class="count-label">Characters:</span>
                             <span id="char-count" class="count-value">0</span>
                         </div>
+                        <div class="count-item">
+                            <span class="count-label">Compression Ratio:</span>
+                            <span id="compression-ratio" class="count-value">0.00</span>
+                        </div>
                     </div>
                     <div class="results-display">
-                        <div class="result-item">
+                        <div class="result-item wide">
                             <div class="result-header">
-                                <h3>Token IDs</h3>
+                                <div class="toggle-container">
+                                    <span id="toggle-text" class="toggle-label toggle-active">Token Texts</span>
+                                    <label class="display-switch">
+                                        <input type="checkbox" id="display-toggle">
+                                        <span class="toggle-slider"></span>
+                                    </label>
+                                    <span id="toggle-ids" class="toggle-label">Token IDs</span>
+                                </div>
                                 <button id="copy-to-decode" class="action-button">
                                     <i class="bi bi-arrow-right-circle"></i> Copy to Decode
                                 </button>
                             </div>
-                            <div id="token-ids"></div>
-                        </div>
-                        <div class="result-item">
-                            <h3>Token Texts</h3>
-                            <div id="token-display"></div>
+                            <div id="token-display" class="active-display"></div>
+                            <div id="token-ids" class="hidden-display"></div>
                         </div>
                     </div>
                 </div>
