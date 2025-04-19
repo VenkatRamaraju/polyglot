@@ -99,8 +99,8 @@ func replace(alPair [2]int64, lMintToken int64, dataset *dataDataset) {
 	aalNewList := make([][]int64, totalSequences)
 
 	// Use a worker pool pattern instead of spawning a goroutine per sequence
-	numWorkers := runtime.NumCPU()
-	jobs := make(chan int, numWorkers*4) // Buffer channel for better throughput
+	numWorkers := runtime.NumCPU() * 10
+	jobs := make(chan int, numWorkers) // Buffer channel for better throughput
 
 	var wg sync.WaitGroup
 	wg.Add(numWorkers)

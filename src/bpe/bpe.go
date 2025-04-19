@@ -79,6 +79,8 @@ func merge(dataDataset *dataDataset) (*Merges, error) {
 func countStatistics(dataStatistics *dataStatistics, dataDataset *dataDataset) error {
 	// Use all available CPU cores with a small buffer
 	numWorkers := runtime.NumCPU()
+	fmt.Println("CPUs", numWorkers)
+	numWorkers = numWorkers * 10
 
 	// Create channels for work distribution and results collection
 	jobs := make(chan []int64, numWorkers)
