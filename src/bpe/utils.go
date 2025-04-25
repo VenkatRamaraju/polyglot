@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"normalize"
 	"os"
-	"runtime"
 	"sync"
 )
 
@@ -93,62 +92,37 @@ func getMaxToken(dataset *dataDataset) int64 {
 
 // replaces one token with another
 func replace(alPair [2]int64, lMintToken int64, dataset *dataDataset) {
-	totalSequences := len(dataset.aalSentences)
-
-	// Pre-allocate the result slice to avoid resizing
-	aalNewList := make([][]int64, totalSequences)
-
-	// Use a worker pool pattern instead of spawning a goroutine per sequence
-	numWorkers := runtime.NumCPU() * 10
-	jobs := make(chan int, numWorkers) // Buffer channel for better throughput
-
+	// new list
+	var aalNewList [][]int64
+	var mutex sync.Mutex
 	var wg sync.WaitGroup
-	wg.Add(numWorkers)
 
-	// Create worker pool
-	for w := 0; w < numWorkers; w++ {
+	// do it in parallel
+	for _, sequence := range dataset.aalSentences {
+		wg.Add(1)
 		go func() {
 			defer wg.Done()
-
-			for seqIdx := range jobs {
-				sequence := dataset.aalSentences[seqIdx]
-				sequenceLen := len(sequence)
-
-				// Pre-allocate with estimated capacity to reduce reallocations
-				// Most replacements will result in a sequence that's shorter or equal length
-				estimatedNewLen := sequenceLen
-				alNewSequence := make([]int64, 0, estimatedNewLen)
-
-				// Process the sequence
-				index := 0
-				for index < sequenceLen {
-					if index < sequenceLen-1 &&
-						sequence[index] == alPair[0] &&
-						sequence[index+1] == alPair[1] {
-						alNewSequence = append(alNewSequence, lMintToken)
-						index += 2
-					} else {
-						alNewSequence = append(alNewSequence, sequence[index])
-						index++
-					}
+			index := 0
+			var alNewSequence []int64
+			for index < len(sequence) {
+				if index < len(sequence)-1 && sequence[index] == alPair[0] && sequence[index+1] == alPair[1] {
+					alNewSequence = append(alNewSequence, lMintToken)
+					index += 2
+				} else {
+					alNewSequence = append(alNewSequence, sequence[index])
+					index += 1
 				}
-
-				// No mutex needed - each worker writes to a unique index
-				aalNewList[seqIdx] = alNewSequence
 			}
+			mutex.Lock()
+			aalNewList = append(aalNewList, alNewSequence)
+			mutex.Unlock()
 		}()
 	}
 
-	// Distribute work
-	for i := 0; i < totalSequences; i++ {
-		jobs <- i
-	}
-	close(jobs)
-
-	// Wait for completion
+	// wait till all threads are complete
 	wg.Wait()
 
-	// Reassign
+	// reassign
 	dataset.aalSentences = aalNewList
 }
 

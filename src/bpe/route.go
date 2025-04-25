@@ -16,15 +16,9 @@ func Train() error {
 	fmt.Println("Done getting data")
 
 	// Perform merges on the statistics
-	dataMerges, err := merge(pdDataset)
+	err = merge(pdDataset)
 	if err != nil {
 		return fmt.Errorf("error running the BPE algorithm: %w", err)
-	}
-
-	// write data to file
-	err = WriteMergesMapToJSONFile(dataMerges, "artifacts/merges.json")
-	if err != nil {
-		return fmt.Errorf("error writing merges map to file: %w", err)
 	}
 
 	return nil

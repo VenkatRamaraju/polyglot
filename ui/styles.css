@@ -328,7 +328,7 @@ pre {
 
 #decoded-text {
     background-color: var(--input-bg);
-    font-family: 'Courier New', Courier, monospace;
+    font-family: 'Courier New', Courier, monospace, Arial, 'Microsoft YaHei', 'SimHei', sans-serif;
     font-size: 16px;
     font-weight: 500;
     line-height: 1.6;
@@ -400,7 +400,7 @@ pre {
     padding: 2px 3px;
     margin: 0;
     border-radius: 0;
-    font-size: 14px;
+    font-size: 18px;
     font-weight: 500;
     transition: background-color 0.2s;
     position: relative;

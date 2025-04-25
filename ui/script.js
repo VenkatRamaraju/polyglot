@@ -337,6 +337,7 @@ document.addEventListener('DOMContentLoaded', () => {
             
             // Instead of replacing the element, update its content directly
             if (text && text.trim().length > 0) {
+                // Use textContent instead of innerText to properly handle all Unicode characters
                 decodedText.textContent = text;
                 
                 // Apply special highlighting if the text is short (< 50 chars)

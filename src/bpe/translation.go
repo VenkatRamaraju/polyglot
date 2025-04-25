@@ -282,7 +282,7 @@ func Decode(mapTokenizer map[string]interface{}, tokens []int64) (string, error)
 	iIndex := int64(0)
 	mapTokens := make(map[int64]string)
 	for iIndex < iMaxToken {
-		mapTokens[iIndex] = string(iIndex)
+		mapTokens[iIndex] = string(rune(iIndex))
 		iIndex += 1
 	}
 
@@ -324,13 +324,18 @@ func Decode(mapTokenizer map[string]interface{}, tokens []int64) (string, error)
 		}
 
 		// override
-		mapTokens[int64(fMintedToken)] = string(int64(fFirstToken)) + string(int64(fSecondToken))
+		mapTokens[int64(fMintedToken)] = string(rune(int64(fFirstToken))) + string(rune(int64(fSecondToken)))
 	}
 
 	// decode overall string using new mapping
 	var sResult string
 	for _, lToken := range tokens {
-		sResult += string(mapTokens[lToken])
+		tokenStr, exists := mapTokens[lToken]
+		if !exists {
+			// If token doesn't exist in our map, use the raw token as a Unicode code point
+			tokenStr = string(rune(lToken))
+		}
+		sResult += tokenStr
 	}
 
 	return sResult, nil
