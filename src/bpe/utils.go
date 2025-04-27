@@ -7,6 +7,7 @@ import (
 	"normalize"
 	"os"
 	"sync"
+	"time"
 )
 
 // dataDataset holds the sentences and a mutex for concurrent access.
@@ -151,12 +152,12 @@ func getVocabSize(dataset *dataDataset, mapTokenizer map[string]interface{}) (in
 	return len(mapUniqueTokens) + len(mapMerges), nil
 }
 
-// loadMergesMap loads the merges map from the JSON file
-func LoadMergesMap() (map[string]interface{}, error) {
+// LoadMaps loads the merges map from the JSON file
+func LoadMaps() (map[string]interface{}, map[int64]string, error) {
 	// Read merges map from JSON file
 	pdFile, err := os.Open("artifacts/merges.json")
 	if err != nil {
-		return nil, fmt.Errorf("failed to open merges file: %w", err)
+		return nil, nil, fmt.Errorf("failed to open merges file: %w", err)
 	}
 	defer pdFile.Close()
 
@@ -166,10 +167,16 @@ func LoadMergesMap() (map[string]interface{}, error) {
 	// Decode the JSON data into the map
 	decoder := json.NewDecoder(pdFile)
 	if err = decoder.Decode(&artifactsMap); err != nil {
-		return nil, fmt.Errorf("failed to decode merges map: %w", err)
+		return nil, nil, fmt.Errorf("failed to decode merges map: %w", err)
 	}
 
-	return artifactsMap, nil
+	// generate Decoded map
+	decodedMap, err := GenerateDecodingMap(artifactsMap)
+	if err != nil {
+		return nil, nil, fmt.Errorf("failed to decode merges map: %w", err)
+	}
+
+	return artifactsMap, decodedMap, nil
 }
 
 // get sequence length
@@ -179,4 +186,23 @@ func getTotalSequenceLength(dataset *dataDataset) int64 {
 		lCount += int64(len(alSequence))
 	}
 	return lCount
+}
+
+// formatting a duration based on unit
+func FormatDuration(d time.Duration) string {
+	ns := d.Nanoseconds()
+
+	switch {
+	case ns < 1_000: // less than 1 microsecond
+		return fmt.Sprintf("%.2fns", float64(ns))
+	case ns < 1_000_000: // less than 1 millisecond
+		us := float64(ns) / 1_000
+		return fmt.Sprintf("%.2fµs", us)
+	case ns < 1_000_000_000: // less than 1 second
+		ms := float64(ns) / 1_000_000
+		return fmt.Sprintf("%.2fms", ms)
+	default:
+		s := float64(ns) / 1_000_000_000
+		return fmt.Sprintf("%.2fs", s)
+	}
 }

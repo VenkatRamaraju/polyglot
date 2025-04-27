@@ -7,6 +7,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const tokenIds = document.getElementById('token-ids');
     const tokenDisplay = document.getElementById('token-display');
     const copyToDecodeBtn = document.getElementById('copy-to-decode');
+    const encodeTime = document.getElementById('encode-time');
 
     // Elements for token display toggle
     const displayToggle = document.getElementById('display-toggle');
@@ -17,6 +18,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const inputTokens = document.getElementById('input-tokens');
     const decodeBtn = document.getElementById('decode-btn');
     const decodedText = document.getElementById('decoded-text');
+    const decodeTime = document.getElementById('decode-time');
 
     // Theme toggle
     const themeSwitch = document.getElementById('theme-switch');
@@ -212,6 +214,12 @@ document.addEventListener('DOMContentLoaded', () => {
             const compressionRatio = (inputText.value.length / data.tokens.length).toFixed(2);
             document.getElementById('compression-ratio').textContent = compressionRatio;
             
+            // Display computation time
+            encodeTime.textContent = data.computation_time_ms;
+            encodeTime.classList.remove('highlight');
+            void encodeTime.offsetWidth; // Force reflow to restart animation
+            encodeTime.classList.add('highlight');
+            
             // Display token IDs in a visually appealing format
             formatTokenIds(data.tokens);
             
@@ -333,15 +341,21 @@ document.addEventListener('DOMContentLoaded', () => {
                 throw new Error(`Server error: ${response.status} ${response.statusText}`);
             }
             
-            const text = await response.json();
+            const data = await response.json();
+            
+            // Display computation time
+            decodeTime.textContent = data.computation_time_ms;
+            decodeTime.classList.remove('highlight');
+            void decodeTime.offsetWidth; // Force reflow to restart animation
+            decodeTime.classList.add('highlight');
             
             // Instead of replacing the element, update its content directly
-            if (text && text.trim().length > 0) {
+            if (data.text && data.text.trim().length > 0) {
                 // Use textContent instead of innerText to properly handle all Unicode characters
-                decodedText.textContent = text;
+                decodedText.textContent = data.text;
                 
                 // Apply special highlighting if the text is short (< 50 chars)
-                if (text.length < 50) {
+                if (data.text.length < 50) {
                     decodedText.style.fontSize = '18px';
                 } else {
                     decodedText.style.fontSize = '16px'; // Reset font size if needed

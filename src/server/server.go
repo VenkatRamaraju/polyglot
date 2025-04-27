@@ -6,12 +6,14 @@ import (
 	"log"
 	"net/http"
 	"sync"
+	"time"
 
 	"bpe"
 )
 
-// Global variable to store the merges map
+// Global variable to store the merges and decoder maps
 var mapMerges map[string]interface{}
+var mapDecoder map[int64]string
 var pdSync sync.Once
 
 // enableCORS sets the necessary headers for Cross-Origin Resource Sharing
@@ -26,7 +28,7 @@ func Launch() {
 	// Pre-load the merges map
 	pdSync.Do(func() {
 		var err error
-		mapMerges, err = bpe.LoadMergesMap()
+		mapMerges, mapDecoder, err = bpe.LoadMaps()
 		if err != nil {
 			log.Fatalf("Failed to load merges map: %s", err)
 		}
@@ -44,8 +46,9 @@ func Launch() {
 
 // Response structure for the encode endpoint
 type EncodeResponse struct {
-	Tokens     []int64  `json:"tokens"`
-	TokenTexts []string `json:"token_texts"`
+	Tokens            []int64  `json:"tokens"`
+	TokenTexts        []string `json:"token_texts"`
+	ComputationTimeMs string   `json:"computation_time_ms"`
 }
 
 // encodeHandler handles the /encode endpoint
@@ -80,6 +83,7 @@ func encodeHandler(dataWriter http.ResponseWriter, pdRequest *http.Request) {
 	}
 
 	// Call bpe.Encode() with the input string
+	startTime := time.Now()
 	alEncodedTokens, err := bpe.Encode(convertedMap, sInput)
 	if err != nil {
 		http.Error(dataWriter, fmt.Sprintf("Encoding error: %v", err), http.StatusInternalServerError)
@@ -92,11 +96,12 @@ func encodeHandler(dataWriter http.ResponseWriter, pdRequest *http.Request) {
 		http.Error(dataWriter, fmt.Sprintf("Token text conversion error: %v", err), http.StatusInternalServerError)
 		return
 	}
+	totalComputationTime := time.Since(startTime)
 
-	// Create response
 	dataResponse := EncodeResponse{
-		Tokens:     alEncodedTokens,
-		TokenTexts: asTokenTexts,
+		Tokens:            alEncodedTokens,
+		TokenTexts:        asTokenTexts,
+		ComputationTimeMs: bpe.FormatDuration(totalComputationTime),
 	}
 
 	// Return the encoded result as the HTTP response
@@ -137,15 +142,26 @@ func decodeHandler(dataWriter http.ResponseWriter, pdRequest *http.Request) {
 	}
 
 	// Call bpe.Decode() with the input tokens
-	sDecodedString, err := bpe.Decode(mapMerges, request.Tokens)
+	startTime := time.Now()
+	sDecodedString, err := bpe.Decode(mapDecoder, request.Tokens)
 	if err != nil {
 		http.Error(dataWriter, fmt.Sprintf("Decoding error: %v", err), http.StatusInternalServerError)
 		return
 	}
+	totalComputationTime := time.Since(startTime)
 
 	// Return the decoded string as the HTTP response
 	dataWriter.Header().Set("Content-Type", "application/json")
-	if err := json.NewEncoder(dataWriter).Encode(sDecodedString); err != nil {
+	// Create a response that includes both the decoded text and computation time
+	response := struct {
+		Text              string `json:"text"`
+		ComputationTimeMs string `json:"computation_time_ms"`
+	}{
+		Text:              sDecodedString,
+		ComputationTimeMs: bpe.FormatDuration(totalComputationTime),
+	}
+
+	if err := json.NewEncoder(dataWriter).Encode(response); err != nil {
 		http.Error(dataWriter, "Error encoding response", http.StatusInternalServerError)
 		return
 	}

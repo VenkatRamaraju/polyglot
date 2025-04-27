@@ -35,7 +35,7 @@ func GetVocabularySize() error {
 	fmt.Println("Done getting data")
 
 	// Load the merges map
-	mapMerges, err := LoadMergesMap()
+	mapMerges, _, err := LoadMaps()
 	if err != nil {
 		return fmt.Errorf("Failed to load merges map: %s", err)
 	}

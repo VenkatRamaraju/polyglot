@@ -1,6 +1,6 @@
 # Polyglot
 
-Polyglot is a high-performance multilingual tokenizer that efficiently compresses text from 10 diverse languages using the Byte-Pair Encoding (BPE) algorithm. The system supports English, Hebrew, Bengali, Vietnamese, Korean, Arabic, Russian, Thai, Chinese, and Japanese.
+Polyglot is a high-performance multilingual tokenizer, built entirely from scratch in Go, that efficiently compresses text from 10 diverse languages using the Byte-Pair Encoding (BPE) algorithm. The system supports English, Hebrew, Bengali, Vietnamese, Korean, Arabic, Russian, Thai, Chinese, and Japanese.
 
 ## Performance Metrics
 
@@ -26,6 +26,8 @@ docker build -t polyglot-app .
 docker run -p 8080:8080 -p 3000:3000 polyglot-app
 ```
 
+Navigate to [localhost:3000](http://localhost:3000/) to interface with the tool.
+
 ## Frontend Interface
 
 The `ui` directory contains an intuitive user interface that provides the following capabilities:
@@ -33,9 +35,9 @@ The `ui` directory contains an intuitive user interface that provides the follow
 - Text input for tokenization
 - Visualization of tokenized segments and their corresponding integer representations
 - Decoding functionality to reconstruct the original text
-- Real-time metrics displaying compression ratio and token-to-character counts for performance analysis
+- Real-time metrics displaying compression ratio, token-to-character counts for performance analysis, and computation times.
 
-## API Documentation
+## Backend
 
 The backend exposes two RESTful endpoints:
 
