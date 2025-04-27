@@ -41,17 +41,11 @@ func normalizeUnicode(sText string) string {
 	return norm.NFKC.String(sText)
 }
 
-// Reduce whitespace to single spaces
-func normalizeWhitespace(sText string) string {
-	return strings.TrimSpace(pdRegex.ReplaceAllString(sText, " "))
-}
-
 // Normalize
 func Normalize(sText string) string {
 	// pre processing operations
 	sText = removeChars(sText)
 	sText = normalizeUnicode(sText)
-	sText = normalizeWhitespace(sText)
 
 	// return normalized string
 	return strings.ToLower(sText)

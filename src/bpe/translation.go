@@ -158,7 +158,7 @@ func getCharacterComposition(token int64, mapMerges map[string]interface{}) ([]s
 	if len(asComponents) > 0 {
 		return asComponents, nil
 	} else {
-		return []string{string(token)}, nil
+		return []string{string(rune(token))}, nil
 	}
 }
 
@@ -324,7 +324,7 @@ func Decode(mapTokenizer map[string]interface{}, tokens []int64) (string, error)
 		}
 
 		// override
-		mapTokens[int64(fMintedToken)] = string(rune(int64(fFirstToken))) + string(rune(int64(fSecondToken)))
+		mapTokens[int64(fMintedToken)] = mapTokens[int64(fFirstToken)] + mapTokens[int64(fSecondToken)]
 	}
 
 	// decode overall string using new mapping
@@ -337,7 +337,6 @@ func Decode(mapTokenizer map[string]interface{}, tokens []int64) (string, error)
 		}
 		sResult += tokenStr
 	}
-
 	return sResult, nil
 }
 

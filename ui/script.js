@@ -99,7 +99,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // Add example text on focus if empty
     inputText.addEventListener('focus', () => {
-        if (inputText.value.trim() === '') {
+        if (inputText.value === '') {
             inputText.placeholder = 'Try typing something like "Hello, world!"';
         }
     });
@@ -110,7 +110,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // Add example tokens on focus if empty
     inputTokens.addEventListener('focus', () => {
-        if (inputTokens.value.trim() === '') {
+        if (inputTokens.value === '') {
             inputTokens.placeholder = 'Try entering numbers like: 15496, 11, 995';
         }
     });
@@ -177,7 +177,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // Handle encoding
     encodeBtn.addEventListener('click', async () => {
-        const text = inputText.value.trim();
+        const text = inputText.value;
         
         if (!text) {
             showError(inputText, 'Please enter some text to encode');
@@ -295,7 +295,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // Handle decoding
     decodeBtn.addEventListener('click', async () => {
-        const tokenText = inputTokens.value.trim();
+        const tokenText = inputTokens.value;
         
         if (!tokenText) {
             showError(inputTokens, 'Please enter token IDs to decode');
@@ -306,7 +306,7 @@ document.addEventListener('DOMContentLoaded', () => {
             // Parse the input as a comma-separated list of integers
             let tokens;
             try {
-                tokens = tokenText.split(',').map(t => parseInt(t.trim(), 10));
+                tokens = tokenText.split(',').map(t => parseInt(t, 10));
                 
                 // Validate that all values are valid numbers
                 if (tokens.some(isNaN)) {
