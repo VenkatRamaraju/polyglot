@@ -49,6 +49,7 @@ type EncodeResponse struct {
 	Tokens            []int64  `json:"tokens"`
 	TokenTexts        []string `json:"token_texts"`
 	ComputationTimeMs string   `json:"computation_time_ms"`
+	ComputationTimeS  float64  `json:"computation_seconds"`
 }
 
 // encodeHandler handles the /encode endpoint
@@ -102,6 +103,7 @@ func encodeHandler(dataWriter http.ResponseWriter, pdRequest *http.Request) {
 		Tokens:            alEncodedTokens,
 		TokenTexts:        asTokenTexts,
 		ComputationTimeMs: bpe.FormatDuration(totalComputationTime),
+		ComputationTimeS:  totalComputationTime.Seconds(),
 	}
 
 	// Return the encoded result as the HTTP response
@@ -152,13 +154,16 @@ func decodeHandler(dataWriter http.ResponseWriter, pdRequest *http.Request) {
 
 	// Return the decoded string as the HTTP response
 	dataWriter.Header().Set("Content-Type", "application/json")
+
 	// Create a response that includes both the decoded text and computation time
 	response := struct {
-		Text              string `json:"text"`
-		ComputationTimeMs string `json:"computation_time_ms"`
+		Text              string  `json:"text"`
+		ComputationTimeMs string  `json:"computation_time_ms"`
+		ComputationTimeS  float64 `json:"computation_seconds"`
 	}{
 		Text:              sDecodedString,
 		ComputationTimeMs: bpe.FormatDuration(totalComputationTime),
+		ComputationTimeS:  totalComputationTime.Seconds(),
 	}
 
 	if err := json.NewEncoder(dataWriter).Encode(response); err != nil {
