@@ -15,12 +15,12 @@ LANGUAGES = {
     "ar": "Arabic",
     "ru": "Russian",
     "th": "Thai",
-    # "zh": "Chinese",
+    "zh-Hans": "Chinese",
     "ja": "Japanese",
 }
 
 # --------------------------------------------------------------------------- #
-def sample_sentences(lang_code: str, n: int = 100):
+def sample_sentences(lang_code: str, n: int = 10000):
     # Use streaming to avoid downloading the entire dataset
     ds = load_dataset("statmt/cc100", lang=lang_code, streaming=True, trust_remote_code=True)
     sentences = []
@@ -65,31 +65,23 @@ def main():
         total_seconds = 0.0
 
         # Start processing for one language
-        start = time.time()
+        for sentence in tqdm(sentences):
+            # Encode
+            encoded_response = encode(sentence)
 
-        # Convert to one blob
-        testing_data = " ".join(sentences)
-        encoded_response = encode(testing_data)
+            # For calculating fertility
+            total_tokens += len(encoded_response["tokens"])
 
-        # For calculating fertility
-        total_tokens += len(encoded_response["tokens"])
+            # Calculate total time
+            total_seconds += encoded_response["computation_seconds"]
 
-        # Calculate total time
-        total_seconds += encoded_response["computation_seconds"]
-
-        # For calculating compression
-        total_characters += len(testing_data)
-            
+            # For calculating compression
+            total_characters += len(sentence)
+                
         # Create results
         results[code] = {
             "compression_ratio": total_characters / total_tokens,
-            "tokens_per_second": total_tokens / total_seconds
         }
-
-        print(round(total_characters / total_tokens, 2))
-        print(round(total_tokens / total_seconds, 2))
-        print("Done with", code, "in", time.time()-start)
-        print("=" * 100)
 
     pprint.pprint(results)
     
