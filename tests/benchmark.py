@@ -29,7 +29,7 @@ mbert_tokenizer = AutoTokenizer.from_pretrained("bert-base-multilingual-cased")
 xlm_tokenizer = AutoTokenizer.from_pretrained("xlm-roberta-base")
 
 # --------------------------------------------------------------------------- #
-def sample_sentences(lang_code: str, n: int = 100):
+def sample_sentences(lang_code: str, n: int = 10000):
     # Use streaming to avoid downloading the entire dataset
     ds = load_dataset("statmt/cc100", lang=lang_code, streaming=True, trust_remote_code=True)
     sentences = []

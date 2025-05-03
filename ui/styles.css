@@ -354,10 +354,11 @@ pre {
 .decoded-text-container {
     position: relative;
     margin-top: 8px;
-    height: 100%;
+    height: auto;
+    min-height: 150px;
     display: flex;
     flex-direction: column;
-    overflow: hidden;
+    overflow: visible;
 }
 
 .output-label {
@@ -392,8 +393,9 @@ pre {
     transition: all 0.3s ease;
     animation: highlight-fade 1s ease-in-out;
     position: relative;
-    height: calc(100% - 30px);
-    max-height: none;
+    height: auto;
+    min-height: 150px;
+    max-height: 300px;
     overflow-y: auto;
     overflow-x: hidden;
     flex: 1;

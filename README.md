@@ -8,10 +8,20 @@ Polyglot is a high-performance multilingual tokenizer, built entirely from scrat
 - Vocabulary Size: *TBD*
 - Total Training Corpus: 432,584,912 characters (10M sentences)
 
+##  Benchmarking
+
+The tokenizer is evaluated against five state-of-the-art (SOTA) baselines: Tiktoken, Transformers, SentencePiece, mBERT, and XLM. A total of 100,000 sentences—10,000 per language across 10 languages—were sampled from the statmt/cc100 dataset. For each tokenizer and language, the mean compression ratio and token fertility were computed over the corresponding 10,000 sentences.
+
+#### Compression Ratio
+
+#### Token fertility
+
+#### Ranking
+
 ## Training
 
 - **Dataset**: The tokenizer was trained on 10M sentences from the [opus-100 dataset](https://huggingface.co/datasets/Helsinki-NLP/opus-100), with 1M sentences per language. The language set was carefully selected to incorporate a sufficiently diverse range of scripts in our training dataset.
-- **Training Process**: The current version has a compression ratio of 3.0. As subsequent version will be published with a 5.0 compression ratio.
+- **Training Process**: The current version has a compression ratio of 3.0. Training runs are in progress to push this to 5.0.
 - **Implementation**: Data aggregation and formatting were implemented in Python. The core BPE algorithm and server were written in Go. Training data was chunked and streamed from S3 for efficient processing on machines of various sizes.
 
 ## Deployment
