@@ -1,11 +1,13 @@
 #!/usr/bin/env python3
-import json, random, time, logging
+import json, random, logging
 from pathlib import Path
 import requests
 from datasets import load_dataset
 from tqdm import tqdm
 import pprint
 import tiktoken
+from transformers import AutoTokenizer
+from util import count_words_batch
 
 # Global variabes
 LANGUAGES = {
@@ -21,6 +23,10 @@ LANGUAGES = {
     "ja": "Japanese",
 }
 tiktoken_encoder = tiktoken.encoding_for_model("gpt-4o")
+transformers_tokenizer = AutoTokenizer.from_pretrained("gpt2")
+sentencepiece_tokenizer = AutoTokenizer.from_pretrained("t5-base")
+mbert_tokenizer = AutoTokenizer.from_pretrained("bert-base-multilingual-cased")
+xlm_tokenizer = AutoTokenizer.from_pretrained("xlm-roberta-base")
 
 # --------------------------------------------------------------------------- #
 def sample_sentences(lang_code: str, n: int = 100):
@@ -36,11 +42,10 @@ def sample_sentences(lang_code: str, n: int = 100):
 
 # --------------------------------------------------------------------------- #
 def polyglot_encode(text: str):
-    # Send the text directly as a JSON string, not as {"text": text}
     headers = {'Content-Type': 'application/json'}
     response = requests.post(
         "http://localhost:8080/encode", 
-        data=json.dumps(text),  # Convert text to JSON string
+        data=json.dumps(text),
         headers=headers,
         timeout=5
     )
@@ -49,21 +54,34 @@ def polyglot_encode(text: str):
 def tiktoken_encode(tokens):
     return tiktoken_encoder.encode(tokens)
 
+def transformers_encode(text):
+    return transformers_tokenizer.encode(text)
+
+def sentencepiece_encode(text):
+    return sentencepiece_tokenizer.encode(text)
+
+def bert_encode(text):
+    return mbert_tokenizer.encode(text)
+
+def xlm_encode(text):
+    return xlm_tokenizer.encode(text)
+
 # --------------------------------------------------------------------------- #
 def main():
     results = {}
-    tokenizers = ["polyglot", "tiktoken"]
+    tokenizers = ["polyglot", "tiktoken", "transformers", "sentencepiece", "bert", "xlm"]
     for code, name in LANGUAGES.items():
         print(f"Processing {name} ({code})...")
         sentences = sample_sentences(code)
+
+        # Total words
+        total_words = sum(count_words_batch(sentences, code, False))
 
         # Per tokenizer
         for tokenizer in tokenizers:
             # Process metrics for this language
             total_tokens = 0
-            total_words = 0
             total_characters = 0
-            total_seconds = 0.0
 
             # Start processing for one language
             for sentence in tqdm(sentences):
@@ -73,6 +91,18 @@ def main():
                     total_tokens += len(encoded_response["tokens"])
                 elif tokenizer == "tiktoken":
                     encoded_response = tiktoken_encode(sentence)
+                    total_tokens += len(encoded_response)
+                elif tokenizer == "transformers":
+                    encoded_response = transformers_encode(sentence)
+                    total_tokens += len(encoded_response)
+                elif tokenizer == "sentencepiece":
+                    encoded_response = sentencepiece_encode(sentence)
+                    total_tokens += len(encoded_response)
+                elif tokenizer == "bert":
+                    encoded_response = bert_encode(sentence)
+                    total_tokens += len(encoded_response)
+                elif tokenizer == "xlm":
+                    encoded_response = xlm_encode(sentence)
                     total_tokens += len(encoded_response)
                 else:
                     raise Exception("Unknown tokenizer:", tokenizer)
@@ -88,14 +118,9 @@ def main():
                 
             # Create results
             results[code][tokenizer]["compression_ratio"] = round(total_characters / total_tokens, 2)
+            results[code][tokenizer]["token_fertility"] = round(total_tokens / total_words, 2)
     
     pprint.pprint(results)
-    count = 0
-    for language in results.keys():
-        if results[language]["polyglot"]["compression_ratio"] > results[language]["tiktoken"]["compression_ratio"]:
-            count += 1
-    print("polyglot is faster for", count, "out of 10")
-    
 
 if __name__ == "__main__":
     main()

@@ -2,7 +2,7 @@
 
 Polyglot is a high-performance multilingual tokenizer, built entirely from scratch in Go, that efficiently compresses text from 10 diverse languages using the Byte-Pair Encoding (BPE) algorithm. The system supports English, Hebrew, Bengali, Vietnamese, Korean, Arabic, Russian, Thai, Chinese, and Japanese.
 
-## Metrics
+## Polyglot Metrics
 
 - Compression Ratio: *TBD*
 - Vocabulary Size: *TBD*
