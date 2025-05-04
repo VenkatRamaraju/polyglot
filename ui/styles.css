@@ -85,6 +85,26 @@ body {
     border-bottom: 1px solid var(--input-border);
 }
 
+.header-controls {
+    display: flex;
+    align-items: center;
+    gap: 20px;
+}
+
+.github-link {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--heading-color);
+    font-size: 24px;
+    transition: color 0.3s ease, transform 0.2s ease;
+}
+
+.github-link:hover {
+    color: var(--button-bg);
+    transform: scale(1.1);
+}
+
 h1 {
     font-size: 32px;
     font-weight: 700;

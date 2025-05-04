@@ -24,7 +24,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const themeSwitch = document.getElementById('theme-switch');
 
     // Backend API URL - make sure this matches your Go server
-    const API_BASE_URL = 'http://localhost:8080';
+    const API_BASE_URL = '/api';
 
     // Check if backend is available (silent check)
     checkBackendConnection();

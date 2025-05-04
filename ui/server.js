@@ -1,8 +1,13 @@
 const http = require('http');
 const fs = require('fs');
 const path = require('path');
+const { createProxyServer } = require('http-proxy');
 
 const PORT = 3000;
+const API_PORT = 8080;
+
+// Create a proxy server for API requests
+const apiProxy = createProxyServer();
 
 const MIME_TYPES = {
     '.html': 'text/html',
@@ -17,8 +22,6 @@ const MIME_TYPES = {
 };
 
 const server = http.createServer((req, res) => {
-    // Remove request logging
-    
     // Set CORS headers to allow requests to the API
     res.setHeader('Access-Control-Allow-Origin', '*');
     res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
@@ -28,6 +31,23 @@ const server = http.createServer((req, res) => {
     if (req.method === 'OPTIONS') {
         res.writeHead(204);
         res.end();
+        return;
+    }
+    
+    // Proxy API requests to the Go backend
+    if (req.url.startsWith('/api')) {
+        console.log(`Proxying API request: ${req.url}`);
+        // Rewrite the URL to remove the /api prefix
+        req.url = req.url.replace(/^\/api/, '');
+        // Proxy to the backend
+        apiProxy.web(req, res, { 
+            target: `http://localhost:${API_PORT}`,
+            ignorePath: false
+        }, (err) => {
+            console.error('Proxy error:', err);
+            res.writeHead(500);
+            res.end('Proxy Error: Cannot connect to backend server. Please make sure the Go server is running on port 8080.');
+        });
         return;
     }
     
@@ -63,5 +83,5 @@ const server = http.createServer((req, res) => {
 });
 
 server.listen(PORT, () => {
-    console.log(`Tokenizer UI running at http://localhost:${PORT}/ (API: http://localhost:8080)`);
-}); 
+    console.log(`Tokenizer UI running at http://localhost:${PORT}/ (API: http://localhost:${API_PORT})`);
+});
